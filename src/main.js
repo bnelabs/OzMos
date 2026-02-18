@@ -13,6 +13,7 @@ import { audioManager } from './audio/AudioManager.js';
 import { CinematicTour } from './scene/CinematicTour.js';
 import { PLANET_ORDER, SOLAR_SYSTEM } from './data/solarSystem.js';
 import { DWARF_PLANETS, DWARF_PLANET_ORDER } from './data/dwarfPlanets.js';
+import { ASTEROIDS } from './data/asteroids.js';
 import { MISSIONS } from './data/missions.js';
 import { startOnboarding } from './ui/Onboarding.js';
 import { renderQuizMenu, renderQuizQuestion, renderQuizResult, renderQuizSummary } from './ui/QuizPanel.js';
@@ -296,8 +297,20 @@ function startApp() {
         cinematicTour = new CinematicTour(scene);
         cinematicTour.onPlanetVisit = (key) => {
           openInfoPanel(key);
+          // Auto-trigger cutaway after camera settles
+          setTimeout(() => {
+            if (!cinematicTour?.isActive) return;
+            disposeCutaway();
+            activeCutaway = createCutawayForPlanet(
+              document.getElementById('cutaway-container') || document.createElement('div'),
+              key
+            );
+            activeCutaway.init();
+          }, 800);
         };
+        cinematicTour.onPlanetLeave = () => disposeCutaway();
         cinematicTour.onTourEnd = () => {
+          disposeCutaway();
           if (btnTour) btnTour.classList.remove('active');
           closeInfoPanel();
           audioManager.setContext('overview');
@@ -666,8 +679,14 @@ function openInfoPanel(key) {
 
   wireCompactHandlers(key);
 
-  // Focus camera
-  if (scene) scene.focusOnPlanet(key);
+  // Focus camera — asteroids focus on the belt region (Ceres orbit area)
+  if (scene) {
+    if (ASTEROIDS[key] && scene.focusOnAsteroidBelt) {
+      scene.focusOnAsteroidBelt();
+    } else {
+      scene.focusOnPlanet(key);
+    }
+  }
 
   // Context-aware music
   audioManager.setContext('planet');
@@ -809,12 +828,25 @@ infoClose.addEventListener('click', closeInfoPanel);
 
 planetThumbs.forEach(thumb => {
   thumb.addEventListener('click', () => {
-    if (thumb.closest('#dwarf-submenu')) return; // Handled by dwarf-specific handler
+    if (thumb.closest('#dwarf-submenu') || thumb.closest('#asteroid-submenu')) return; // Handled by specific handlers
     const key = thumb.dataset.planet;
     if (!key) return;  // Skip toggle buttons without data-planet
     openInfoPanel(key);
   });
 });
+
+// ==================== Submenu Positioning Helper ====================
+
+function positionSubmenu(anchor, menu) {
+  const rect = anchor.getBoundingClientRect();
+  const menuWidth = menu.offsetWidth;
+  let left = rect.left + rect.width / 2 - menuWidth / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+  menu.style.position = 'fixed';
+  menu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  menu.style.left = left + 'px';
+  menu.style.transform = 'none';
+}
 
 // ==================== Dwarf Planet Sub-Menu ====================
 
@@ -822,10 +854,22 @@ const dwarfToggle = document.getElementById('dwarf-toggle');
 const dwarfSubmenu = document.getElementById('dwarf-submenu');
 
 if (dwarfToggle && dwarfSubmenu) {
+  // Portal to body so overflow:hidden on planet-bar can't clip it
+  document.body.appendChild(dwarfSubmenu);
+
   dwarfToggle.addEventListener('click', (e) => {
     e.stopPropagation();
+    // Cross-close asteroid submenu if open
+    const asteroidSub = document.getElementById('asteroid-submenu');
+    if (asteroidSub && !asteroidSub.classList.contains('hidden')) {
+      asteroidSub.classList.add('hidden');
+      const astToggle = document.getElementById('asteroid-toggle');
+      if (astToggle) astToggle.classList.remove('active');
+    }
     dwarfSubmenu.classList.toggle('hidden');
-    dwarfToggle.classList.toggle('active', !dwarfSubmenu.classList.contains('hidden'));
+    const isOpen = !dwarfSubmenu.classList.contains('hidden');
+    dwarfToggle.classList.toggle('active', isOpen);
+    if (isOpen) positionSubmenu(dwarfToggle, dwarfSubmenu);
   });
 
   // Wire dwarf planet buttons
@@ -848,6 +892,64 @@ if (dwarfToggle && dwarfSubmenu) {
       dwarfToggle.classList.remove('active');
     }
   });
+
+  // Reposition on window resize
+  window.addEventListener('resize', () => {
+    if (!dwarfSubmenu.classList.contains('hidden')) {
+      positionSubmenu(dwarfToggle, dwarfSubmenu);
+    }
+  });
+}
+
+// ==================== Asteroid Sub-Menu ====================
+
+const asteroidToggle = document.getElementById('asteroid-toggle');
+const asteroidSubmenu = document.getElementById('asteroid-submenu');
+
+if (asteroidToggle && asteroidSubmenu) {
+  // Portal to body so overflow:hidden on planet-bar can't clip it
+  document.body.appendChild(asteroidSubmenu);
+
+  asteroidToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Cross-close dwarf submenu if open
+    if (dwarfSubmenu && !dwarfSubmenu.classList.contains('hidden')) {
+      dwarfSubmenu.classList.add('hidden');
+      if (dwarfToggle) dwarfToggle.classList.remove('active');
+    }
+    asteroidSubmenu.classList.toggle('hidden');
+    const isOpen = !asteroidSubmenu.classList.contains('hidden');
+    asteroidToggle.classList.toggle('active', isOpen);
+    if (isOpen) positionSubmenu(asteroidToggle, asteroidSubmenu);
+  });
+
+  // Wire asteroid buttons
+  asteroidSubmenu.querySelectorAll('.planet-thumb').forEach(thumb => {
+    thumb.addEventListener('click', (e) => {
+      e.stopImmediatePropagation();
+      const key = thumb.dataset.planet;
+      openInfoPanel(key);
+      asteroidSubmenu.classList.add('hidden');
+      asteroidToggle.classList.remove('active');
+    });
+  });
+
+  // Close submenu when clicking elsewhere
+  document.addEventListener('click', (e) => {
+    if (!asteroidSubmenu.classList.contains('hidden') &&
+        !asteroidSubmenu.contains(e.target) &&
+        e.target !== asteroidToggle && !asteroidToggle.contains(e.target)) {
+      asteroidSubmenu.classList.add('hidden');
+      asteroidToggle.classList.remove('active');
+    }
+  });
+
+  // Reposition on window resize
+  window.addEventListener('resize', () => {
+    if (!asteroidSubmenu.classList.contains('hidden')) {
+      positionSubmenu(asteroidToggle, asteroidSubmenu);
+    }
+  });
 }
 
 // ==================== Planet Bar Scroll Indicators ====================
@@ -863,6 +965,36 @@ planetBar.addEventListener('scroll', updateScrollIndicators, { passive: true });
 window.addEventListener('resize', updateScrollIndicators);
 // Initial check
 setTimeout(updateScrollIndicators, 100);
+
+// ==================== Planet Bar Dock Magnification (desktop) ====================
+
+if (planetBar && window.matchMedia('(min-width: 768px)').matches) {
+  const barThumbs = planetBar.querySelectorAll('.planet-thumb');
+
+  planetBar.addEventListener('mousemove', (e) => {
+    const mouseX = e.clientX;
+    barThumbs.forEach(thumb => {
+      const rect = thumb.getBoundingClientRect();
+      const thumbCenterX = rect.left + rect.width / 2;
+      const dist = Math.abs(mouseX - thumbCenterX);
+      const maxDist = 120;
+      const scale = dist < maxDist ? 1 + 0.25 * (1 - dist / maxDist) : 1;
+      const dot = thumb.querySelector('.thumb-dot');
+      if (dot && !thumb.classList.contains('active')) {
+        dot.style.transform = `scale(${scale})`;
+      }
+    });
+  }, { passive: true });
+
+  planetBar.addEventListener('mouseleave', () => {
+    barThumbs.forEach(thumb => {
+      const dot = thumb.querySelector('.thumb-dot');
+      if (dot && !thumb.classList.contains('active')) {
+        dot.style.transform = '';
+      }
+    });
+  });
+}
 
 // ==================== Navigation Buttons ====================
 
@@ -1358,8 +1490,20 @@ if (btnTour) {
       cinematicTour = new CinematicTour(scene);
       cinematicTour.onPlanetVisit = (key) => {
         openInfoPanel(key);
+        // Auto-trigger cutaway after camera settles
+        setTimeout(() => {
+          if (!cinematicTour?.isActive) return;
+          disposeCutaway();
+          activeCutaway = createCutawayForPlanet(
+            document.getElementById('cutaway-container') || document.createElement('div'),
+            key
+          );
+          activeCutaway.init();
+        }, 800);
       };
+      cinematicTour.onPlanetLeave = () => disposeCutaway();
       cinematicTour.onTourEnd = () => {
+        disposeCutaway();
         btnTour.classList.remove('active');
         closeInfoPanel();
         audioManager.setContext('overview');
@@ -1373,6 +1517,7 @@ if (btnTour) {
       // Trigger epic music for tour
       audioManager.setContext('mission');
     } else {
+      disposeCutaway();
       audioManager.setContext('overview');
       closeInfoPanel();
     }
@@ -1730,14 +1875,14 @@ canvasContainer.addEventListener('touchend', (e) => {
 
 function handleInitialHash() {
   const hash = window.location.hash.replace('#', '');
-  if (hash && (SOLAR_SYSTEM[hash] || DWARF_PLANETS[hash])) {
+  if (hash && (SOLAR_SYSTEM[hash] || DWARF_PLANETS[hash] || ASTEROIDS[hash])) {
     openInfoPanel(hash);
   }
 }
 
 window.addEventListener('hashchange', () => {
   const hash = window.location.hash.replace('#', '');
-  if (hash && (SOLAR_SYSTEM[hash] || DWARF_PLANETS[hash])) {
+  if (hash && (SOLAR_SYSTEM[hash] || DWARF_PLANETS[hash] || ASTEROIDS[hash])) {
     if (currentPlanetKey !== hash) {
       openInfoPanel(hash);
     }

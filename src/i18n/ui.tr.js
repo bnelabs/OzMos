@@ -250,6 +250,9 @@ export const ui_tr = {
   // Dwarf planets nav
   'nav.dwarfPlanets': 'Cüceler',
 
+  // Asteroids nav
+  'nav.asteroids': 'Asteroitler',
+
   // Moon layer names
   'layer.moon.crust': 'Kabuk',
   'layer.moon.upperMantle': 'Üst Manto',

@@ -28,7 +28,7 @@ export const atmosphereFragmentShader = `
 
     // Sun-facing side is brighter
     float sunFacing = dot(vNormal, sunDir) * 0.5 + 0.5;
-    glow *= mix(0.3, 1.0, sunFacing);
+    glow *= mix(0.05, 1.0, sunFacing);
 
     gl_FragColor = vec4(uColor, glow * 0.5);
   }
@@ -98,5 +98,37 @@ export const ringFragmentShader = `
     alpha *= smoothstep(0.0, 0.15, r) * (1.0 - smoothstep(0.94, 1.0, r));
 
     gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+/** City lights shader — only visible on the night side */
+export const cityLightsVertexShader = `
+  varying vec3 vNormal;
+  varying vec3 vWorldPosition;
+  varying vec2 vUv;
+
+  void main() {
+    vUv = uv;
+    vNormal = normalize(normalMatrix * normal);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+export const cityLightsFragmentShader = `
+  uniform sampler2D uCityMap;
+  uniform vec3 uSunPosition;
+  varying vec3 vNormal;
+  varying vec3 vWorldPosition;
+  varying vec2 vUv;
+
+  void main() {
+    vec4 city = texture2D(uCityMap, vUv);
+    vec3 sunDir = normalize(uSunPosition - vWorldPosition);
+    float sunFacing = dot(vNormal, sunDir);
+    // Only show on night side with smooth transition at terminator
+    float nightMask = smoothstep(0.1, -0.1, sunFacing);
+    gl_FragColor = vec4(city.rgb, city.r * nightMask);
   }
 `;

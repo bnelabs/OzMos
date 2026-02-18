@@ -9,11 +9,12 @@ export class CinematicTour {
     this.scene = scene;
     this.active = false;
     this.currentIndex = 0;
-    this.dwellTime = 5.0; // seconds at each planet
+    this.dwellTime = 8.0; // seconds at each planet (accommodates 6s cutaway + buffer)
     this.dwellTimer = 0;
     this.waitingForTransition = false;
-    this.onPlanetVisit = null; // callback(key)
-    this.onTourEnd = null;     // callback()
+    this.onPlanetVisit = null;  // callback(key)
+    this.onPlanetLeave = null;  // callback(key) — called before moving to next
+    this.onTourEnd = null;      // callback()
   }
 
   start() {
@@ -73,6 +74,10 @@ export class CinematicTour {
     // Dwell at current planet
     this.dwellTimer += delta;
     if (this.dwellTimer >= this.dwellTime) {
+      // Fire leave callback for current planet before advancing
+      if (this.onPlanetLeave) {
+        this.onPlanetLeave(PLANET_ORDER[this.currentIndex]);
+      }
       this.currentIndex++;
       if (this.currentIndex >= PLANET_ORDER.length) {
         this._endTour();

@@ -824,6 +824,158 @@ export function generateEarthCityLights(size = 1024) {
   return canvas;
 }
 
+/** Generate roughness map from a loaded NASA Earth texture.
+ *  Analyzes color to detect ocean (smooth/specular) vs land (matte) vs ice (medium). */
+export function generateRoughnessFromTexture(texture, size = 1024) {
+  const height = size / 2;
+  // Draw the Three.js texture image to a canvas to sample pixels
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = size;
+  srcCanvas.height = height;
+  const srcCtx = srcCanvas.getContext('2d');
+  srcCtx.drawImage(texture.image, 0, 0, size, height);
+  const srcData = srcCtx.getImageData(0, 0, size, height).data;
+
+  const { canvas, ctx } = createCanvas(size, height);
+  const imageData = ctx.createImageData(size, height);
+  const data = imageData.data;
+
+  for (let y = 0; y < height; y++) {
+    const lat = Math.abs(y / height - 0.5) * 2; // 0 at equator, 1 at poles
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const r = srcData[i];
+      const g = srcData[i + 1];
+      const b = srcData[i + 2];
+
+      let roughness;
+
+      // Polar regions: ice
+      if (lat > 0.83) {
+        roughness = 0.5;
+      } else {
+        // Ocean detection: blue-dominant pixels
+        const isOcean = b > r * 1.1 && b > g * 1.05 && b > 40;
+        // Also detect very dark ocean (deep water)
+        const isDarkOcean = r < 50 && g < 60 && b < 90 && b >= r;
+
+        if (isOcean || isDarkOcean) {
+          roughness = 0.15; // smooth/specular water
+        } else {
+          roughness = 0.8; // matte land
+        }
+      }
+
+      // Smooth transition into polar ice
+      if (lat > 0.75 && lat <= 0.83) {
+        const blend = (lat - 0.75) / 0.08;
+        roughness = roughness * (1 - blend) + 0.5 * blend;
+      }
+
+      const v = Math.floor(roughness * 255);
+      data[i] = v;
+      data[i + 1] = v;
+      data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/** Generate city lights from a loaded NASA Earth texture.
+ *  Uses the actual texture to detect land areas, placing lights only on real continents. */
+export function generateCityLightsFromTexture(texture, size = 1024) {
+  const height = size / 2;
+  // Draw the Three.js texture image to a canvas to sample pixels
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = size;
+  srcCanvas.height = height;
+  const srcCtx = srcCanvas.getContext('2d');
+  srcCtx.drawImage(texture.image, 0, 0, size, height);
+  const srcData = srcCtx.getImageData(0, 0, size, height).data;
+
+  const { canvas, ctx } = createCanvas(size, height);
+  const imageData = ctx.createImageData(size, height);
+  const data = imageData.data;
+
+  // Build a land mask from the NASA texture
+  const landMask = new Uint8Array(size * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const r = srcData[i];
+      const g = srcData[i + 1];
+      const b = srcData[i + 2];
+      const lat = Math.abs(y / height - 0.5) * 2;
+
+      // Ocean detection (same as roughness map)
+      const isOcean = (b > r * 1.1 && b > g * 1.05 && b > 40) ||
+                      (r < 50 && g < 60 && b < 90 && b >= r);
+      const isPolar = lat > 0.78;
+
+      landMask[y * size + x] = (!isOcean && !isPolar) ? 1 : 0;
+    }
+  }
+
+  // Compute distance-to-coast for each land pixel (approximate via sampling neighbors)
+  const cityNoise = createNoiseGenerator(2222);
+  const clusterNoise = createNoiseGenerator(3333);
+
+  for (let y = 0; y < height; y++) {
+    const lat = Math.abs(y / height - 0.5) * 2;
+    for (let x = 0; x < size; x++) {
+      const idx = y * size + x;
+      const i = idx * 4;
+
+      if (!landMask[idx]) {
+        data[i] = data[i + 1] = data[i + 2] = 0;
+        data[i + 3] = 255;
+        continue;
+      }
+
+      const nx = x / size * 8;
+      const ny = y / height * 4;
+
+      // Mid-latitude concentration (most cities 20-60 degrees)
+      const latWeight = Math.exp(-Math.pow((lat - 0.4) * 3, 2));
+
+      // Coastal bias: check nearby pixels for ocean
+      let coastDist = 1.0;
+      const checkR = 8;
+      for (let dy = -checkR; dy <= checkR; dy += 2) {
+        for (let dx = -checkR; dx <= checkR; dx += 2) {
+          const cx = (x + dx + size) % size;
+          const cy = clamp(y + dy, 0, height - 1);
+          if (!landMask[cy * size + cx]) {
+            const d = Math.sqrt(dx * dx + dy * dy) / checkR;
+            coastDist = Math.min(coastDist, d);
+          }
+        }
+      }
+      const coastBias = 1.0 + (1.0 - coastDist) * 1.5;
+
+      // City clusters using noise
+      const cluster = fbm(clusterNoise, nx * 4, ny * 4, 4, 0.5, 2.0) * 0.5 + 0.5;
+      const detail = fbm(cityNoise, nx * 12, ny * 12, 3, 0.4, 2.0) * 0.5 + 0.5;
+
+      let brightness = cluster * detail * latWeight * coastBias;
+      brightness = brightness > 0.35 ? Math.pow((brightness - 0.35) / 0.65, 1.5) : 0;
+      brightness = clamp(brightness, 0, 1);
+
+      // Warm yellow-orange city light color
+      data[i] = Math.floor(brightness * 255);       // R
+      data[i + 1] = Math.floor(brightness * 200);   // G (warm)
+      data[i + 2] = Math.floor(brightness * 100);   // B (warm)
+      data[i + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
 /** Generate Saturn's ring texture */
 export function generateRingTexture(size = 1024) {
   const { canvas, ctx } = createCanvas(size, 64);

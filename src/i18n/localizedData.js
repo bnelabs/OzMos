@@ -4,6 +4,7 @@
  */
 import { SOLAR_SYSTEM, PLANET_ORDER } from '../data/solarSystem.js';
 import { DWARF_PLANETS } from '../data/dwarfPlanets.js';
+import { ASTEROIDS } from '../data/asteroids.js';
 import { getLang, t } from './i18n.js';
 import { dataTR } from './data.tr.js';
 
@@ -14,7 +15,7 @@ const TRANSLATIONS = { tr: dataTR };
  * Non-translated fields (numeric, color, etc.) pass through unchanged.
  */
 export function getLocalizedPlanet(key) {
-  const base = SOLAR_SYSTEM[key] || DWARF_PLANETS[key];
+  const base = SOLAR_SYSTEM[key] || DWARF_PLANETS[key] || ASTEROIDS[key];
   if (!base) return null;
 
   const lang = getLang();

@@ -159,13 +159,13 @@ html, body {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  padding-top: calc(var(--space-2) + var(--safe-top));
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  padding: var(--space-1) var(--space-3);
+  padding-top: calc(var(--space-1) + var(--safe-top));
+  background: rgba(10, 10, 18, 0.45);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.2);
 }
 
 .nav-brand {
@@ -293,37 +293,65 @@ html, body {
   transform: rotate(-45deg) translate(5px, -5px);
 }
 
-/* ===== Nav Controls — Mobile: dropdown ===== */
+/* ===== Nav Controls — Mobile: bottom sheet overlay ===== */
 .nav-controls {
   display: none;
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  bottom: 0;
   left: 0;
   right: 0;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  animation: slideDown 0.25s ease;
+  padding: var(--space-4) var(--space-4) calc(var(--space-5) + var(--safe-bottom));
+  background: rgba(10, 10, 18, 0.95);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+  z-index: 500;
+  animation: sheetSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-controls::before {
+  content: '';
+  width: 36px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  align-self: center;
+  margin-bottom: var(--space-2);
 }
 
 .nav-controls.open {
   display: flex;
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
+/* Backdrop dim behind bottom sheet */
+.nav-controls.open ~ .nav-sheet-backdrop,
+body.nav-sheet-open::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 499;
+}
+
+@keyframes sheetSlideUp {
+  from { opacity: 0; transform: translateY(100%); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.nav-group {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+.nav-controls .nav-group .nav-btn {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 48px;
+  font-size: 0.85rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .nav-divider {
@@ -334,20 +362,20 @@ html, body {
 }
 
 .nav-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
   font-family: var(--font-main);
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-size: 0.74rem;
+  font-weight: 400;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 38px;
+  min-width: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -355,10 +383,9 @@ html, body {
 }
 
 .nav-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
-  transform: scale(1.02);
 }
 
 .nav-btn:active {
@@ -366,10 +393,37 @@ html, body {
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, rgba(74, 158, 255, 0.12), rgba(74, 158, 255, 0.06));
-  border-color: rgba(74, 158, 255, 0.3);
+  background: rgba(74, 158, 255, 0.1);
+  border-color: rgba(74, 158, 255, 0.25);
   color: var(--accent);
-  box-shadow: 0 0 12px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 8px rgba(74, 158, 255, 0.15);
+}
+
+/* Segmented pill group — nav buttons grouped together */
+.nav-group {
+  display: flex;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-pill);
+  padding: 2px;
+}
+
+.nav-group .nav-btn {
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--radius-pill) - 2px);
+  padding: var(--space-1) var(--space-2);
+  min-height: 34px;
+}
+
+.nav-group .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-group .nav-btn.active {
+  background: rgba(74, 158, 255, 0.12);
+  box-shadow: none;
 }
 
 .nav-icon {
@@ -543,7 +597,7 @@ html, body {
   background: var(--dot-color);
   background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 50%),
                     radial-gradient(circle at 65% 65%, rgba(0,0,0,0.4) 0%, transparent 50%);
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
   box-shadow: 0 0 6px 1px rgba(255,255,255,0.1),
               inset 0 -2px 4px rgba(0,0,0,0.3),
               inset 0 2px 4px rgba(255,255,255,0.15);
@@ -557,19 +611,30 @@ html, body {
 }
 
 .planet-thumb.active .thumb-dot {
-  transform: scale(1.25);
+  transform: scale(1.2);
   box-shadow:
     inset -2px -2px 4px rgba(0, 0, 0, 0.3),
     inset 2px 2px 4px rgba(255, 255, 255, 0.15),
-    0 0 20px var(--accent-glow);
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  animation: dotPulse 2s ease-in-out infinite;
+    0 0 12px var(--accent-glow);
+  outline: none;
+  animation: accentRing 2.5s ease-in-out infinite;
 }
 
-@keyframes dotPulse {
-  0%, 100% { box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.15), 0 0 15px var(--accent-glow); }
-  50% { box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.15), 0 0 25px var(--accent-glow); }
+@keyframes accentRing {
+  0%, 100% {
+    box-shadow:
+      inset -2px -2px 4px rgba(0,0,0,0.3),
+      inset 2px 2px 4px rgba(255,255,255,0.15),
+      0 0 0 2px rgba(74, 158, 255, 0.4),
+      0 0 12px var(--accent-glow);
+  }
+  50% {
+    box-shadow:
+      inset -2px -2px 4px rgba(0,0,0,0.3),
+      inset 2px 2px 4px rgba(255,255,255,0.15),
+      0 0 0 3px rgba(74, 158, 255, 0.25),
+      0 0 20px var(--accent-glow);
+  }
 }
 
 /* ===== Per-Planet Realistic Thumbnails ===== */
@@ -667,10 +732,17 @@ html, body {
 
 .planet-thumb.active [data-planet="sun"] .thumb-dot,
 .planet-thumb.active .thumb-dot {
-  animation: dotPulse 2s ease-in-out infinite;
+  animation: accentRing 2.5s ease-in-out infinite;
 }
 
 /* Increase dot size on desktop */
+@media (min-width: 768px) {
+  .thumb-dot {
+    width: 26px;
+    height: 26px;
+  }
+}
+
 @media (min-width: 1024px) {
   .thumb-dot {
     width: 28px;
@@ -717,19 +789,20 @@ html, body {
   right: 0;
   z-index: 200;
   max-height: 40vh;
-  background: rgba(8, 8, 20, 0.75);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border-top-left-radius: var(--radius);
-  border-top-right-radius: var(--radius);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 8, 20, 0.72);
+  backdrop-filter: blur(30px) saturate(1.4);
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 -4px 24px rgba(0, 0, 0, 0.3);
   overflow-y: auto;
   transform: translateY(0);
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.4s ease,
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.35s ease,
               max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overscroll-behavior: contain;
-  animation: slideUpPanel 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideUpPanel 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes slideUpPanel {
@@ -810,8 +883,9 @@ html, body {
 
 .info-compact-header h1 {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -879,8 +953,9 @@ html, body {
 
 .info-header h1 {
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   margin-bottom: var(--space-1);
 }
 
@@ -1840,8 +1915,8 @@ kbd {
   }
 
   #top-nav {
-    padding: var(--space-3) var(--space-5);
-    padding-top: calc(var(--space-3) + var(--safe-top));
+    padding: var(--space-2) var(--space-5);
+    padding-top: calc(var(--space-2) + var(--safe-top));
     gap: var(--space-3);
   }
 
@@ -1854,10 +1929,27 @@ kbd {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border: none;
+    border-radius: 0;
     box-shadow: none;
     animation: none;
     align-items: center;
     gap: var(--space-2);
+    z-index: auto;
+  }
+
+  .nav-controls::before {
+    display: none;
+  }
+
+  .nav-controls .nav-group .nav-btn {
+    width: auto;
+    justify-content: center;
+    min-height: 34px;
+    font-size: 0.74rem;
+    padding: var(--space-1) var(--space-2);
+    border-radius: calc(var(--radius-pill) - 2px);
+    background: transparent;
+    border: none;
   }
 
   .nav-divider {
@@ -1872,22 +1964,23 @@ kbd {
 
   /* Info panel: side drawer — transparent, right-aligned */
   #info-panel {
-    top: 56px;
+    top: 50px;
     left: auto;
     right: 0;
     bottom: 80px;
     width: 360px;
     max-width: 90vw;
     max-height: unset;
-    border-left: 1px solid var(--border);
-    border-top-left-radius: var(--radius);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    border-top-left-radius: 16px;
     border-top-right-radius: 0;
     border-bottom-left-radius: 0;
-    background: rgba(8, 8, 20, 0.7);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    background: rgba(8, 8, 20, 0.68);
+    backdrop-filter: blur(30px) saturate(1.4);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), -4px 0 24px rgba(0, 0, 0, 0.2);
     transform: translateX(0);
-    animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   @keyframes slideInRight {
@@ -1913,7 +2006,7 @@ kbd {
   }
 
   .info-header h1 {
-    font-size: 1.8rem;
+    font-size: 2rem;
   }
 
   #info-content {
@@ -1931,6 +2024,7 @@ kbd {
     transform: translateX(-50%);
     max-width: calc(100vw - var(--space-6));
     bottom: var(--space-4);
+    overflow: visible;
   }
 }
 
@@ -1987,7 +2081,12 @@ kbd {
   }
 
   .info-header h1 {
-    font-size: 2rem;
+    font-size: 2.2rem;
+    letter-spacing: -0.03em;
+  }
+
+  .info-compact-header h1 {
+    font-size: 1.7rem;
   }
 
   #info-content {
@@ -2972,30 +3071,66 @@ kbd {
   border: 1px dashed rgba(255,255,255,0.3);
 }
 
-.dwarf-planet-submenu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+/* Shared body-portal submenu style (dwarf planets, asteroids) */
+.body-submenu {
+  position: fixed;
   display: flex;
   gap: 2px;
-  padding: 8px 10px;
-  background: var(--bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  animation: slideUp 0.2s ease;
-  z-index: 100;
+  padding: 8px 12px;
+  background: rgba(10, 10, 18, 0.92);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: submenuAppear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: bottom center;
+}
+
+.body-submenu.hidden {
+  display: none;
+}
+
+/* Small caret pointing down to anchor */
+.body-submenu::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 6px;
+  background: rgba(10, 10, 18, 0.92);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+@keyframes submenuAppear {
+  from { opacity: 0; transform: scale(0.92) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.dwarf-planet-submenu {
+  /* Extends .body-submenu via class in HTML; kept for backward compat */
 }
 
 .dwarf-planet-submenu.hidden {
   display: none;
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* ===== Asteroid Sub-Menu ===== */
+.asteroid-group {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.asteroid-toggle .asteroid-dot {
+  border-radius: 40%;
+  border: 1px dashed rgba(255,255,255,0.25);
+}
+
+.asteroid-submenu.hidden {
+  display: none;
 }
 
 /* ===== Compare Panel Visuals ===== */

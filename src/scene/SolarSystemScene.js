@@ -16,6 +16,7 @@ import {
 import {
   atmosphereVertexShader, atmosphereFragmentShader,
   ringVertexShader, ringFragmentShader,
+  cityLightsVertexShader, cityLightsFragmentShader,
 } from '../shaders/atmosphereShader.js';
 import { getPlanetHeliocentricAU, getCurrentDateStr, advanceDateStr } from './OrbitalMechanics.js';
 import { AsteroidBelt } from './AsteroidBelt.js';
@@ -29,6 +30,7 @@ import {
   createNoiseGenerator, fbm,
   generateBumpMap, generateEarthRoughnessMap, generateMarsRoughnessMap,
   generateEarthCityLights,
+  generateRoughnessFromTexture, generateCityLightsFromTexture,
 } from '../textures/proceduralTextures.js';
 import { loadAllTextures } from '../textures/textureLoader.js';
 
@@ -545,7 +547,14 @@ export class SolarSystemScene {
 
       // Per-pixel roughness maps for Earth and Mars (desktop only)
       if (this._quality === 'high') {
-        if (key === 'earth') {
+        if (key === 'earth' && this.textures.earth) {
+          // Generate roughness from actual NASA texture for accurate ocean/land specular
+          const roughCanvas = generateRoughnessFromTexture(this.textures.earth, 1024);
+          const roughTexture = new THREE.CanvasTexture(roughCanvas);
+          planetMat.roughnessMap = roughTexture;
+          planetMat.roughness = 1.0;
+        } else if (key === 'earth') {
+          // Fallback to procedural if no NASA texture
           const roughCanvas = generateEarthRoughnessMap(1024);
           const roughTexture = new THREE.CanvasTexture(roughCanvas);
           planetMat.roughnessMap = roughTexture;
@@ -614,11 +623,19 @@ export class SolarSystemScene {
 
       // Earth night-side city lights (desktop only)
       if (key === 'earth' && this._quality === 'high') {
-        const cityCanvas = generateEarthCityLights(1024);
+        // Use texture-aware generator if NASA texture available
+        const cityCanvas = this.textures.earth
+          ? generateCityLightsFromTexture(this.textures.earth, 1024)
+          : generateEarthCityLights(1024);
         const cityTexture = new THREE.CanvasTexture(cityCanvas);
         const cityGeo = new THREE.SphereGeometry(planetData.displayRadius * 1.005, 48, 48);
-        const cityMat = new THREE.MeshBasicMaterial({
-          map: cityTexture,
+        const cityMat = new THREE.ShaderMaterial({
+          vertexShader: cityLightsVertexShader,
+          fragmentShader: cityLightsFragmentShader,
+          uniforms: {
+            uCityMap: { value: cityTexture },
+            uSunPosition: { value: new THREE.Vector3(0, 0, 0) },
+          },
           transparent: true,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
@@ -1129,6 +1146,41 @@ export class SolarSystemScene {
     this.controls.minDistance = 5;
   }
 
+  /** Focus on asteroid belt region — elevated view centered on ~54 AU (Ceres orbit) */
+  focusOnAsteroidBelt() {
+    this.startCameraPos.copy(this.camera.position);
+    this.startLookAt.copy(this.controls.target);
+    // Target a region in the asteroid belt (between Mars and Jupiter)
+    this.targetCameraPos = new THREE.Vector3(30, 35, 55);
+    this.targetLookAt = new THREE.Vector3(0, 0, 0);
+
+    const cameraDist = this.startCameraPos.distanceTo(this.targetCameraPos);
+    this.transitionDuration = THREE.MathUtils.clamp(cameraDist / 40, 1.5, 4.0);
+
+    const mid = new THREE.Vector3().addVectors(this.startCameraPos, this.targetCameraPos).multiplyScalar(0.5);
+    const pathDir = new THREE.Vector3().subVectors(this.targetCameraPos, this.startCameraPos);
+    const lateral = new THREE.Vector3(-pathDir.z, 0, pathDir.x).normalize();
+
+    this._bezierCP1 = new THREE.Vector3().lerpVectors(this.startCameraPos, this.targetCameraPos, 1/3);
+    this._bezierCP1.add(lateral.clone().multiplyScalar(cameraDist * 0.12));
+    this._bezierCP1.y += cameraDist * 0.08;
+
+    this._bezierCP2 = new THREE.Vector3().lerpVectors(this.startCameraPos, this.targetCameraPos, 2/3);
+    this._bezierCP2.add(lateral.clone().multiplyScalar(cameraDist * 0.04));
+    this._bezierCP2.y += cameraDist * 0.03;
+
+    this.transitionMidPoint = null;
+    this._fovZoomActive = false;
+
+    this.isTransitioning = true;
+    this.transitionProgress = 0;
+    this.selectedPlanet = null;
+
+    this.controls.autoRotate = true;
+    this.controls.autoRotateSpeed = 0.2;
+    this.controls.minDistance = 5;
+  }
+
   setAnimationSpeed(speed) {
     this.animationSpeed = speed;
   }
@@ -1575,8 +1627,13 @@ export class SolarSystemScene {
     if (this.issTracker) this.issTracker.dispose();
     if (this.earthCityLights) {
       this.earthCityLights.geometry.dispose();
-      this.earthCityLights.material.map.dispose();
-      this.earthCityLights.material.dispose();
+      const mat = this.earthCityLights.material;
+      if (mat.uniforms && mat.uniforms.uCityMap) {
+        mat.uniforms.uCityMap.value.dispose();
+      } else if (mat.map) {
+        mat.map.dispose();
+      }
+      mat.dispose();
     }
     this.renderer.dispose();
     window.removeEventListener('resize', this._onResize);
