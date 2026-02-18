@@ -8,10 +8,11 @@ import { renderCompareTable, renderCompareCards } from './ui/ComparePanel.js';
 import { renderMissionList, renderMissionDetail, renderMissionHUD, renderWaypointCard } from './ui/MissionPanel.js';
 import { MissionRenderer } from './scene/MissionRenderer.js';
 import { CutawayRenderer } from './ui/CutawayRenderer.js';
+import { SolarStormSimulation } from './scene/SolarStormSimulation.js';
 import { audioManager } from './audio/AudioManager.js';
 import { CinematicTour } from './scene/CinematicTour.js';
 import { PLANET_ORDER, SOLAR_SYSTEM } from './data/solarSystem.js';
-import { DWARF_PLANETS } from './data/dwarfPlanets.js';
+import { DWARF_PLANETS, DWARF_PLANET_ORDER } from './data/dwarfPlanets.js';
 import { MISSIONS } from './data/missions.js';
 import { startOnboarding } from './ui/Onboarding.js';
 import { renderQuizMenu, renderQuizQuestion, renderQuizResult, renderQuizSummary } from './ui/QuizPanel.js';
@@ -55,6 +56,7 @@ const quizClose = document.getElementById('quiz-close');
 const btnQuiz = document.getElementById('btn-quiz');
 
 const btnTour = document.getElementById('btn-tour');
+const btnStorm = document.getElementById('btn-storm');
 const musicPanel = document.getElementById('music-panel');
 const musicVolumeSlider = document.getElementById('music-volume-slider');
 const musicAutoSwitch = document.getElementById('music-auto-switch');
@@ -82,6 +84,7 @@ let labelsVisible = true;
 let keyboardHelpVisible = false;
 let waypointCardTimeout = null;
 let activeCutaway = null;
+let solarStorm = null;
 
 // Quiz state
 let quizActive = false;
@@ -167,11 +170,11 @@ function refreshStaticText() {
   });
 
   // Update planet labels in 3D scene
-  for (const key of PLANET_ORDER) {
+  for (const key of [...PLANET_ORDER, ...DWARF_PLANET_ORDER]) {
     const el = labelElements[key];
     if (el) {
       const data = getLocalizedPlanet(key);
-      el.textContent = data.name;
+      if (data) el.textContent = data.name;
     }
   }
 }
@@ -375,8 +378,48 @@ function showError(message) {
 
 const DEDICATION_KEY = 'ozmos-dedication-seen';
 
+let dedicationAudio = null;
+
 function showDedication() {
   dedicationScreen.classList.remove('hidden');
+
+  // Try to play dedication music (lightweight HTML5 audio, not AudioManager)
+  try {
+    dedicationAudio = new Audio('/audio/contemplative.mp3');
+    dedicationAudio.loop = true;
+    dedicationAudio.volume = 0;
+    const playPromise = dedicationAudio.play();
+    if (playPromise && playPromise.then) {
+      playPromise.then(() => {
+        // Fade volume from 0 to 0.5 over 2 seconds
+        let vol = 0;
+        const fadeIn = setInterval(() => {
+          vol = Math.min(vol + 0.025, 0.5);
+          if (dedicationAudio) dedicationAudio.volume = vol;
+          if (vol >= 0.5) clearInterval(fadeIn);
+        }, 100);
+      }).catch(() => {
+        // Autoplay blocked — start on first user interaction
+        const startOnInteraction = () => {
+          if (dedicationAudio) {
+            dedicationAudio.play().catch(() => {});
+            let vol = 0;
+            const fadeIn = setInterval(() => {
+              vol = Math.min(vol + 0.025, 0.5);
+              if (dedicationAudio) dedicationAudio.volume = vol;
+              if (vol >= 0.5) clearInterval(fadeIn);
+            }, 100);
+          }
+          dedicationScreen.removeEventListener('click', startOnInteraction);
+          dedicationScreen.removeEventListener('touchstart', startOnInteraction);
+        };
+        dedicationScreen.addEventListener('click', startOnInteraction, { once: true });
+        dedicationScreen.addEventListener('touchstart', startOnInteraction, { once: true });
+      });
+    }
+  } catch {
+    // Audio not available — continue silently
+  }
 
   // Auto-complete after poem animation (~12s)
   const autoTimer = setTimeout(endDedication, 12000);
@@ -389,6 +432,23 @@ function showDedication() {
 
 function endDedication() {
   if (dedicationScreen.classList.contains('hidden')) return;
+
+  // Fade out dedication audio
+  if (dedicationAudio) {
+    const fadeAudio = dedicationAudio;
+    let vol = fadeAudio.volume;
+    const fadeOut = setInterval(() => {
+      vol = Math.max(vol - 0.05, 0);
+      fadeAudio.volume = vol;
+      if (vol <= 0) {
+        clearInterval(fadeOut);
+        fadeAudio.pause();
+        fadeAudio.src = '';
+      }
+    }, 50);
+    dedicationAudio = null;
+  }
+
   dedicationScreen.classList.add('fade-out');
   localStorage.setItem(DEDICATION_KEY, '1');
   setTimeout(() => {
@@ -418,10 +478,12 @@ if (!localStorage.getItem(DEDICATION_KEY)) {
 // ==================== Planet Labels ====================
 
 function createLabels() {
-  for (const key of PLANET_ORDER) {
+  for (const key of [...PLANET_ORDER, ...DWARF_PLANET_ORDER]) {
+    const data = getLocalizedPlanet(key);
+    if (!data) continue;
     const el = document.createElement('div');
     el.className = 'planet-label';
-    el.textContent = getLocalizedPlanet(key).name;
+    el.textContent = data.name;
     el.dataset.planet = key;
     document.body.appendChild(el);
     labelElements[key] = el;
@@ -436,14 +498,15 @@ function updateLabels() {
     return;
   }
 
-  for (const key of PLANET_ORDER) {
+  for (const key of [...PLANET_ORDER, ...DWARF_PLANET_ORDER]) {
     const el = labelElements[key];
     if (!el) continue;
 
     const pos = scene.getScreenPosition(key);
     if (pos.visible && pos.x > -100 && pos.x < window.innerWidth + 100 &&
         pos.y > -100 && pos.y < window.innerHeight + 100) {
-      const offset = SOLAR_SYSTEM[key].displayRadius * 8 + 12;
+      const pData = SOLAR_SYSTEM[key] || DWARF_PLANETS[key];
+      const offset = (pData ? pData.displayRadius : 1) * 8 + 12;
       el.style.left = pos.x + 'px';
       el.style.top = (pos.y - offset) + 'px';
       el.style.transform = 'translateX(-50%)';
@@ -497,6 +560,11 @@ function wireSceneCallbacks() {
     // Update cinematic tour
     if (cinematicTour) {
       cinematicTour.update(delta || 0.016);
+    }
+
+    // Update solar storm simulation
+    if (solarStorm && solarStorm.isActive) {
+      solarStorm.update(delta || 0.016);
     }
   };
 }
@@ -713,6 +781,7 @@ infoClose.addEventListener('click', closeInfoPanel);
 
 planetThumbs.forEach(thumb => {
   thumb.addEventListener('click', () => {
+    if (thumb.closest('#dwarf-submenu')) return; // Handled by dwarf-specific handler
     const key = thumb.dataset.planet;
     if (!key) return;  // Skip toggle buttons without data-planet
     openInfoPanel(key);
@@ -734,7 +803,7 @@ if (dwarfToggle && dwarfSubmenu) {
   // Wire dwarf planet buttons
   dwarfSubmenu.querySelectorAll('.planet-thumb').forEach(thumb => {
     thumb.addEventListener('click', (e) => {
-      e.stopPropagation();
+      e.stopImmediatePropagation();
       const key = thumb.dataset.planet;
       openInfoPanel(key);
       dwarfSubmenu.classList.add('hidden');
@@ -909,9 +978,11 @@ if (musicPanel) {
   trackBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const trackId = btn.dataset.track;
-      if (!audioManager.isMuted) {
-        audioManager.crossfadeTo(trackId);
+      if (audioManager.isMuted) {
+        audioManager.play();
+        updateMusicIcon();
       }
+      audioManager.crossfadeTo(trackId);
       updateMusicTrackButtons();
     });
   });
@@ -1277,6 +1348,40 @@ if (btnTour) {
       audioManager.setContext('overview');
       closeInfoPanel();
     }
+  });
+}
+
+// ==================== Solar Storm ====================
+
+if (btnStorm) {
+  btnStorm.addEventListener('click', () => {
+    if (!scene) return;
+
+    if (solarStorm && solarStorm.isActive) {
+      // If already active, either launch new CME or deactivate
+      solarStorm.deactivate();
+      solarStorm = null;
+      btnStorm.classList.remove('active');
+      return;
+    }
+
+    // Build planet data lookup for the simulation
+    const planetDataLookup = {};
+    for (const key of [...PLANET_ORDER, ...DWARF_PLANET_ORDER]) {
+      const data = SOLAR_SYSTEM[key] || DWARF_PLANETS[key];
+      if (data) planetDataLookup[key] = data;
+    }
+
+    solarStorm = new SolarStormSimulation(
+      scene.scene,
+      (key) => scene.getPlanetWorldPosition(key),
+      planetDataLookup
+    );
+    solarStorm.activate();
+    btnStorm.classList.add('active');
+
+    // Go to overview for best view
+    scene.goToOverview();
   });
 }
 

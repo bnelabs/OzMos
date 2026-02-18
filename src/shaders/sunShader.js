@@ -174,3 +174,37 @@ export const coronaFragmentShader = `
     gl_FragColor = vec4(color, alpha);
   }
 `;
+
+/** Volumetric corona shell shaders — Fresnel-based glow on concentric BackSide spheres */
+export const coronaShellVertexShader = `
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vViewDir = normalize(cameraPosition - worldPos.xyz);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+export const coronaShellFragmentShader = `
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+  uniform float uTime;
+  uniform float uOpacity;
+  uniform vec3 uColor;
+
+  void main() {
+    // Fresnel: stronger glow at edges (BackSide means normals point inward)
+    float fresnel = 1.0 - abs(dot(vNormal, vViewDir));
+    float glow = pow(fresnel, 2.5);
+
+    // Subtle pulse
+    float pulse = sin(uTime * 0.4) * 0.08 + 0.92;
+
+    float alpha = glow * uOpacity * pulse;
+
+    gl_FragColor = vec4(uColor, alpha);
+  }
+`;

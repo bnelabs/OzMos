@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PLANET_LAYERS } from '../data/planetLayers.js';
 import { t } from '../i18n/i18n.js';
 
@@ -9,10 +10,13 @@ export class CutawayRenderer {
     this.renderer = null;
     this.scene = null;
     this.camera = null;
+    this.controls = null;
     this.layers = [];
     this.clipPlane = null;
     this._animationId = null;
     this._disposed = false;
+    this._labelElements = [];
+    this._animationComplete = false;
   }
 
   init() {
@@ -36,6 +40,14 @@ export class CutawayRenderer {
     this.camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
     this.camera.position.set(2.5, 1.5, 2.5);
     this.camera.lookAt(0, 0, 0);
+
+    // OrbitControls for user drag-to-rotate after animation
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.enableZoom = false;
+    this.controls.enablePan = false;
+    this.controls.enabled = false; // Disabled during animation
 
     // Lighting
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -65,7 +77,7 @@ export class CutawayRenderer {
       this.layers.push({ mesh, data: layer, radius });
     }
 
-    // Create HTML labels for layers
+    // Create HTML labels for layers (hidden initially for staggered reveal)
     this._createLabels(layers, maxR, height);
 
     // Start animation
@@ -77,6 +89,7 @@ export class CutawayRenderer {
     labelContainer.className = 'cutaway-labels';
     labelContainer.style.cssText = 'position:relative;margin-top:-' + containerHeight + 'px;height:' + containerHeight + 'px;pointer-events:none;';
 
+    this._labelElements = [];
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       const label = document.createElement('div');
@@ -84,8 +97,9 @@ export class CutawayRenderer {
       label.textContent = t(layer.key);
       // Position labels on the right side, vertically distributed
       const yPercent = 15 + (i / layers.length) * 70;
-      label.style.cssText = `position:absolute;right:8px;top:${yPercent}%;font-size:11px;color:#ccc;text-shadow:0 1px 3px rgba(0,0,0,0.8);`;
+      label.style.cssText = `position:absolute;right:8px;top:${yPercent}%;font-size:11px;color:#ccc;text-shadow:0 1px 3px rgba(0,0,0,0.8);opacity:0;transition:opacity 0.8s ease;`;
       labelContainer.appendChild(label);
+      this._labelElements.push(label);
     }
 
     this.container.appendChild(labelContainer);
@@ -93,7 +107,8 @@ export class CutawayRenderer {
 
   playAnimation() {
     let startTime = null;
-    const duration = 2000; // 2 second reveal animation
+    const duration = 6000; // 6 second reveal animation
+    const layerCount = this.layers.length;
 
     const animate = (timestamp) => {
       if (this._disposed) return;
@@ -102,18 +117,45 @@ export class CutawayRenderer {
       const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      // Ease-in-out
-      const eased = progress < 0.5
-        ? 2 * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      // Cubic ease-in-out
+      const p = progress;
+      const eased = p < 0.5
+        ? 4 * p * p * p
+        : 1 - Math.pow(-2 * p + 2, 3) / 2;
 
       // Sweep clip plane from right (-1) to center (0)
       this.clipPlane.constant = eased * 1.2;
 
-      // Gentle auto-rotation
-      this.scene.rotation.y += 0.003;
+      // Stagger label reveal: show each label when its layer is exposed
+      for (let i = 0; i < this._labelElements.length; i++) {
+        const threshold = (i + 0.5) / layerCount;
+        if (eased >= threshold) {
+          this._labelElements[i].style.opacity = '1';
+        }
+      }
+
+      // Slow rotation during reveal, speed up after
+      if (!this._animationComplete) {
+        this.scene.rotation.y += 0.001;
+      } else {
+        this.scene.rotation.y += 0.004;
+      }
+
+      // Update controls if enabled
+      if (this.controls) {
+        this.controls.update();
+      }
 
       this.renderer.render(this.scene, this.camera);
+
+      if (progress >= 1 && !this._animationComplete) {
+        this._animationComplete = true;
+        // Enable user interaction after animation
+        if (this.controls) {
+          this.controls.enabled = true;
+        }
+      }
+
       this._animationId = requestAnimationFrame(animate);
     };
 
@@ -124,6 +166,9 @@ export class CutawayRenderer {
     this._disposed = true;
     if (this._animationId) {
       cancelAnimationFrame(this._animationId);
+    }
+    if (this.controls) {
+      this.controls.dispose();
     }
     if (this.renderer) {
       this.renderer.dispose();
@@ -141,5 +186,6 @@ export class CutawayRenderer {
       l.mesh.material.dispose();
     });
     this.layers = [];
+    this._labelElements = [];
   }
 }

@@ -10,6 +10,7 @@ import { SOLAR_SYSTEM, PLANET_ORDER } from '../data/solarSystem.js';
 import {
   sunVertexShader, sunFragmentShader,
   coronaVertexShader, coronaFragmentShader,
+  coronaShellVertexShader, coronaShellFragmentShader,
 } from '../shaders/sunShader.js';
 import {
   atmosphereVertexShader, atmosphereFragmentShader,
@@ -115,7 +116,7 @@ export class SolarSystemScene {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.4;
+    this.renderer.toneMappingExposure = 1.2;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.container.appendChild(this.renderer.domElement);
 
@@ -178,8 +179,9 @@ export class SolarSystemScene {
       this.composer.addPass(new RenderPass(this.scene, this.camera));
       const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.3, 0.4, 0.85
+        0.2, 0.4, 0.9
       );
+      this._bloomPass = bloomPass;
       this.composer.addPass(bloomPass);
     }
 
@@ -318,7 +320,7 @@ export class SolarSystemScene {
     this.sun.userData = { key: 'sun', type: 'planet' };
     this.scene.add(this.sun);
 
-    // Corona glow
+    // Corona glow (inner)
     const coronaGeo = new THREE.SphereGeometry(sunData.displayRadius * 1.25, 64, 64);
     const coronaMat = new THREE.ShaderMaterial({
       vertexShader: coronaVertexShader,
@@ -333,29 +335,33 @@ export class SolarSystemScene {
     this.corona = new THREE.Mesh(coronaGeo, coronaMat);
     this.scene.add(this.corona);
 
-    // Outer glow (sprite)
-    const glowCanvas = document.createElement('canvas');
-    glowCanvas.width = 256;
-    glowCanvas.height = 256;
-    const gCtx = glowCanvas.getContext('2d');
-    const gradient = gCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    gradient.addColorStop(0, 'rgba(253, 184, 19, 0.3)');
-    gradient.addColorStop(0.3, 'rgba(253, 150, 19, 0.15)');
-    gradient.addColorStop(0.7, 'rgba(253, 100, 19, 0.05)');
-    gradient.addColorStop(1, 'rgba(253, 100, 19, 0)');
-    gCtx.fillStyle = gradient;
-    gCtx.fillRect(0, 0, 256, 256);
-
-    const glowTexture = new THREE.CanvasTexture(glowCanvas);
-    const glowMat = new THREE.SpriteMaterial({
-      map: glowTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    this.sunGlow = new THREE.Sprite(glowMat);
-    this.sunGlow.scale.set(40, 40, 1);
-    this.scene.add(this.sunGlow);
+    // Volumetric corona shells — 4 concentric spheres with Fresnel glow
+    const shellConfigs = [
+      { scale: 1.5, opacity: 0.12, color: new THREE.Color(1.0, 0.75, 0.25) },
+      { scale: 2.0, opacity: 0.06, color: new THREE.Color(1.0, 0.6, 0.15) },
+      { scale: 3.0, opacity: 0.025, color: new THREE.Color(1.0, 0.45, 0.08) },
+      { scale: 5.0, opacity: 0.008, color: new THREE.Color(1.0, 0.3, 0.03) },
+    ];
+    this.coronaShells = [];
+    for (const cfg of shellConfigs) {
+      const shellGeo = new THREE.SphereGeometry(sunData.displayRadius * cfg.scale, 48, 48);
+      const shellMat = new THREE.ShaderMaterial({
+        vertexShader: coronaShellVertexShader,
+        fragmentShader: coronaShellFragmentShader,
+        uniforms: {
+          uTime: { value: 0 },
+          uOpacity: { value: cfg.opacity },
+          uColor: { value: cfg.color },
+        },
+        transparent: true,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+      this.scene.add(shellMesh);
+      this.coronaShells.push(shellMesh);
+    }
 
     // Sun point light — bright with no decay so all planets are well-lit
     this.sunLight = new THREE.PointLight(0xFFF5E0, 3.5, 0, 0);
@@ -370,13 +376,18 @@ export class SolarSystemScene {
   }
 
   _createLighting() {
-    // Hemisphere light for natural sky/ground fill
-    const hemi = new THREE.HemisphereLight(0x4466aa, 0x112233, 0.35);
+    // Hemisphere light — warm neutral to avoid purple contamination
+    const hemi = new THREE.HemisphereLight(0x887766, 0x221111, 0.2);
     this.scene.add(hemi);
 
-    // Ambient light for base visibility on dark sides
-    const ambient = new THREE.AmbientLight(0x223344, 0.5);
+    // Ambient light — dim gray for base visibility on dark sides
+    const ambient = new THREE.AmbientLight(0x181818, 0.3);
     this.scene.add(ambient);
+
+    // Subtle fill light to reduce harsh shadows
+    this._fillLight = new THREE.DirectionalLight(0xffffff, 0.08);
+    this._fillLight.position.set(0, 1, 1);
+    this.scene.add(this._fillLight);
   }
 
   _createPlanets() {
@@ -1114,9 +1125,13 @@ export class SolarSystemScene {
     const h = window.innerHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(w, h);
     if (this.composer) {
       this.composer.setSize(w, h);
+    }
+    if (this._bloomPass) {
+      this._bloomPass.resolution.set(w, h);
     }
   }
 
@@ -1209,25 +1224,41 @@ export class SolarSystemScene {
   }
 
   _startCinematicSweep() {
-    // 8-second CatmullRom spline sweep through the solar system
+    // 15-second cinematic sweep: start close to Earth, pull back to overview
     this._cinematicSweepActive = true;
+
+    // Get Earth's world position at load time
+    const earthPos = this.getPlanetWorldPosition('earth');
+    const earthData = SOLAR_SYSTEM.earth;
+    const earthR = earthData.displayRadius;
+    const earthCloseup = new THREE.Vector3(
+      earthPos.x + earthR * 3,
+      earthPos.y + earthR * 1.5,
+      earthPos.z + earthR * 3
+    );
+    const earthDrift = new THREE.Vector3(
+      earthPos.x + earthR * 5,
+      earthPos.y + earthR * 2.5,
+      earthPos.z + earthR * 6
+    );
+
     this._cinematicSpline = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(3, 2, 5),       // Close to Sun
-      new THREE.Vector3(10, 8, 15),      // Past inner planets
-      new THREE.Vector3(25, 18, 35),     // Mid solar system
-      new THREE.Vector3(35, 25, 55),     // Pulling back
-      new THREE.Vector3(40, 30, 80),     // Final overview
+      earthCloseup,                          // Close to Earth
+      earthDrift,                            // Drift away from Earth
+      new THREE.Vector3(15, 10, 20),         // Inner planets
+      new THREE.Vector3(30, 20, 45),         // Mid solar system
+      new THREE.Vector3(40, 30, 80),         // Final overview
     ], false, 'centripetal', 0.5);
 
     this._cinematicLookSpline = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0, 0),        // Look at Sun
-      new THREE.Vector3(5, 0, 5),        // Inner planets
-      new THREE.Vector3(10, 0, 10),      // Mid
-      new THREE.Vector3(5, 0, 0),        // Transition
-      new THREE.Vector3(0, 0, 0),        // Final: center
+      earthPos.clone(),                      // Look at Earth
+      earthPos.clone(),                      // Still looking at Earth
+      new THREE.Vector3(5, 0, 5),            // Transition to center
+      new THREE.Vector3(0, 0, 0),            // Center
+      new THREE.Vector3(0, 0, 0),            // Final: center
     ], false, 'centripetal', 0.5);
 
-    this.transitionDuration = 8.0;
+    this.transitionDuration = 15.0;
     this.isTransitioning = true;
     this.transitionProgress = 0;
     this.selectedPlanet = null;
@@ -1270,6 +1301,12 @@ export class SolarSystemScene {
     }
     if (this.corona && this.corona.material.uniforms) {
       this.corona.material.uniforms.uTime.value = elapsed;
+    }
+    // Update corona shell shaders
+    if (this.coronaShells) {
+      for (const shell of this.coronaShells) {
+        shell.material.uniforms.uTime.value = elapsed;
+      }
     }
 
     // Slowly rotate the sun for realism

@@ -572,6 +572,112 @@ html, body {
   50% { box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.15), 0 0 25px var(--accent-glow); }
 }
 
+/* ===== Per-Planet Realistic Thumbnails ===== */
+[data-planet="sun"] .thumb-dot {
+  background: radial-gradient(circle at 40% 40%, #fff 0%, #ffe066 20%, #ffaa00 50%, #cc6600 80%, #993300 100%) !important;
+  box-shadow: 0 0 8px 3px rgba(255, 170, 0, 0.5), inset 0 -2px 4px rgba(0,0,0,0.2);
+  animation: sunPulse 3s ease-in-out infinite;
+}
+
+@keyframes sunPulse {
+  0%, 100% { box-shadow: 0 0 8px 3px rgba(255, 170, 0, 0.4), inset 0 -2px 4px rgba(0,0,0,0.2); }
+  50% { box-shadow: 0 0 14px 5px rgba(255, 170, 0, 0.6), inset 0 -2px 4px rgba(0,0,0,0.2); }
+}
+
+[data-planet="mercury"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #b0a898 0%, #8c7e6d 40%, #6b5d4f 70%, #4a3f35 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 40%),
+                    radial-gradient(circle at 60% 55%, rgba(0,0,0,0.3) 0%, transparent 30%),
+                    radial-gradient(circle at 35% 35%, #b0a898 0%, #8c7e6d 40%, #6b5d4f 70%, #4a3f35 100%) !important;
+}
+
+[data-planet="venus"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #e8d8a0 0%, #c4a45a 35%, #b89040 60%, #8a6830 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 35%),
+                    radial-gradient(circle at 50% 50%, rgba(200,180,130,0.3) 0%, transparent 60%),
+                    radial-gradient(circle at 35% 35%, #e8d8a0 0%, #c4a45a 35%, #b89040 60%, #8a6830 100%) !important;
+}
+
+[data-planet="earth"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #6ab4e8 0%, #4a90d9 25%, #3a7bc8 45%, #2d6aa0 65%, #1a4870 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4) 0%, transparent 25%),
+                    radial-gradient(ellipse at 45% 40%, rgba(80,160,80,0.4) 0%, transparent 40%),
+                    radial-gradient(ellipse at 55% 55%, rgba(80,160,80,0.3) 0%, transparent 30%),
+                    radial-gradient(circle at 35% 35%, #6ab4e8 0%, #4a90d9 25%, #3a7bc8 45%, #1a4870 100%) !important;
+}
+
+[data-planet="mars"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #e87040 0%, #c1440e 40%, #a03008 65%, #701800 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 30%),
+                    radial-gradient(circle at 50% 15%, rgba(255,255,255,0.5) 0%, transparent 15%),
+                    radial-gradient(circle at 35% 35%, #e87040 0%, #c1440e 40%, #a03008 65%, #701800 100%) !important;
+}
+
+[data-planet="jupiter"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #e8c878 0%, #c88b3a 50%, #a06828 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 25%),
+                    linear-gradient(180deg,
+                      #d4a050 0%, #c89848 12%, #b08040 18%, #d4a860 24%,
+                      #c09050 30%, #a87040 38%, #c4a058 44%, #d8b870 50%,
+                      #c09848 56%, #a87840 62%, #c4a058 68%, #d0a850 76%,
+                      #b89048 84%, #a07838 100%) !important;
+}
+
+[data-planet="saturn"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #e8d498 0%, #c5ab6e 50%, #a08850 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 25%),
+                    linear-gradient(180deg,
+                      #d8c488 0%, #c8b478 20%, #b8a468 35%, #d0c080 50%,
+                      #c0b070 65%, #b0a060 80%, #c8b878 100%) !important;
+  position: relative;
+}
+
+[data-planet="saturn"] .thumb-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 140%;
+  height: 40%;
+  transform: translate(-50%, -50%) rotate(-20deg);
+  border: 1.5px solid rgba(200, 180, 120, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+[data-planet="uranus"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #a8dce8 0%, #72b5c4 40%, #5a98a8 70%, #3a7888 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 30%),
+                    linear-gradient(180deg, #80c8d8 0%, #72b5c4 30%, #68aab8 50%, #78bcc8 70%, #72b5c4 100%),
+                    radial-gradient(circle at 35% 35%, #a8dce8 0%, #72b5c4 40%, #5a98a8 70%, #3a7888 100%) !important;
+}
+
+[data-planet="neptune"] .thumb-dot {
+  background: radial-gradient(circle at 35% 35%, #6478c8 0%, #3e54a3 40%, #2a3d88 70%, #1a2a68 100%) !important;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 25%),
+                    linear-gradient(180deg, #5068b8 0%, #4058a8 25%, #3e54a3 50%, #4860b0 75%, #3a50a0 100%),
+                    radial-gradient(circle at 35% 35%, #6478c8 0%, #3e54a3 40%, #2a3d88 70%, #1a2a68 100%) !important;
+}
+
+/* Per-planet hover enhancements */
+.planet-thumb:hover [data-planet] .thumb-dot,
+.planet-thumb:hover .thumb-dot {
+  filter: brightness(1.15);
+}
+
+.planet-thumb.active [data-planet="sun"] .thumb-dot,
+.planet-thumb.active .thumb-dot {
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+/* Increase dot size on desktop */
+@media (min-width: 1024px) {
+  .thumb-dot {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* ===== Planet Bar Scroll Indicators ===== */
 /* Note: #planet-bar is already position:fixed which serves as containing block for ::before/::after */
 
@@ -2954,6 +3060,25 @@ kbd {
   color: var(--text-secondary);
   white-space: nowrap;
   min-width: 60px;
+}
+
+/* ===== Solar Storm Button Active State ===== */
+#btn-storm.active {
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.15), rgba(255, 60, 0, 0.08));
+  border-color: rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Ultra-Wide Desktop (1920px+) ===== */
+@media (min-width: 1920px) {
+  #planet-bar {
+    max-width: 1200px;
+  }
+
+  #info-panel {
+    width: 440px;
+  }
 }
 
 /* ===== Reduced Motion ===== */
