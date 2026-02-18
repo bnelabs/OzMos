@@ -26,6 +26,14 @@ export function renderCompactPlanetInfo(key) {
     stats += compactStat(t('stat.gravity'), data.gravity);
   }
 
+  let cutawayBtn = '';
+  if (PLANET_LAYERS[key]) {
+    cutawayBtn = `<button class="cutaway-toggle compact-cutaway" id="cutaway-btn" data-planet="${key}">
+      ${t('cutaway.show')}
+    </button>
+    <div id="cutaway-container" style="display:none;"></div>`;
+  }
+
   return `
     <div class="info-compact">
       <div class="info-compact-header">
@@ -33,6 +41,7 @@ export function renderCompactPlanetInfo(key) {
         <span class="subtitle">${data.type}</span>
       </div>
       <div class="info-compact-stats">${stats}</div>
+      ${cutawayBtn}
       <button class="info-toggle-btn" id="info-show-more">${t('info.showMore') || 'Show more'} &#x25BC;</button>
     </div>`;
 }

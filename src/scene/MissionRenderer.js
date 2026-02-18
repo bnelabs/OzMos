@@ -207,12 +207,12 @@ export class MissionRenderer {
       // Subtle roll from binormal (cross product of tangent and up)
       const up = new THREE.Vector3(0, 1, 0);
       const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
-      const rollAmount = Math.sin(this.animationProgress * Math.PI * 4) * 0.08; // ~5 deg max
+      const rollAmount = Math.sin(this.animationProgress * Math.PI * 4) * 0.03;
       cameraOffset.add(binormal.multiplyScalar(rollAmount * 2));
 
       const targetCamPos = point.clone().add(cameraOffset);
-      this._followCamera.position.lerp(targetCamPos, 0.015);
-      this._followControls.target.lerp(point, 0.025);
+      this._followCamera.position.lerp(targetCamPos, 0.06);
+      this._followControls.target.lerp(point, 0.08);
     }
 
     // Emit progress update

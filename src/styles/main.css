@@ -57,8 +57,6 @@ html, body {
 
 #canvas-container canvas {
   display: block;
-  width: 100% !important;
-  height: 100% !important;
 }
 
 /* ===== Focus Styles (Accessibility) ===== */
@@ -539,19 +537,23 @@ html, body {
 }
 
 .thumb-dot {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  transition: var(--transition);
-  box-shadow:
-    inset -2px -2px 4px rgba(0, 0, 0, 0.3),
-    inset 2px 2px 4px rgba(255, 255, 255, 0.15),
-    0 0 8px rgba(0, 0, 0, 0.5);
+  background: var(--dot-color);
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 50%),
+                    radial-gradient(circle at 65% 65%, rgba(0,0,0,0.4) 0%, transparent 50%);
+  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 0 6px 1px rgba(255,255,255,0.1),
+              inset 0 -2px 4px rgba(0,0,0,0.3),
+              inset 0 2px 4px rgba(255,255,255,0.15);
 }
 
 .planet-thumb:hover .thumb-dot {
-  transform: scale(1.2);
-  box-shadow: 0 0 15px var(--dot-color, rgba(255, 255, 255, 0.2));
+  transform: scale(1.15);
+  box-shadow: 0 0 10px 2px var(--dot-color, rgba(255, 255, 255, 0.2)),
+              inset 0 -2px 4px rgba(0,0,0,0.3),
+              inset 0 2px 4px rgba(255,255,255,0.15);
 }
 
 .planet-thumb.active .thumb-dot {
@@ -2894,10 +2896,21 @@ kbd {
 .compare-planet-dot {
   display: inline-block;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.15);
   vertical-align: middle;
   margin-right: 6px;
   flex-shrink: 0;
+  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 65% 65%, rgba(0,0,0,0.35) 0%, transparent 50%);
+  box-shadow: 0 0 8px 2px rgba(255,255,255,0.08),
+              inset 0 -3px 6px rgba(0,0,0,0.3),
+              inset 0 3px 6px rgba(255,255,255,0.12);
+  animation: planetSpin 8s linear infinite;
+}
+
+@keyframes planetSpin {
+  0% { filter: hue-rotate(0deg) brightness(1); }
+  50% { filter: hue-rotate(0deg) brightness(1.08); }
+  100% { filter: hue-rotate(0deg) brightness(1); }
 }
 
 .compare-table .planet-name {

@@ -31,13 +31,13 @@ class AudioManager {
 
     // Restore persisted state
     const storedMuted = localStorage.getItem(STORAGE_KEY);
-    this.muted = storedMuted === null ? true : storedMuted === 'true';
+    this.muted = storedMuted === null ? false : storedMuted === 'true';
 
     const storedVolume = localStorage.getItem(VOLUME_KEY);
     this._volume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
 
     const storedTrack = localStorage.getItem(TRACK_KEY);
-    this._preferredTrack = storedTrack || 'calm';
+    this._preferredTrack = storedTrack || 'epic';
 
     const storedAuto = localStorage.getItem(AUTO_KEY);
     this.autoSwitch = storedAuto === null ? true : storedAuto === 'true';

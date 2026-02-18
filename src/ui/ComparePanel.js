@@ -10,9 +10,9 @@ function colorToHex(c) {
   return '#' + c.toString(16).padStart(6, '0');
 }
 
-/** Calculate relative dot size (Jupiter = max at 28px) */
-function relativeSize(displayRadius, maxRadius) {
-  return Math.max(6, Math.round((displayRadius / maxRadius) * 28));
+/** Calculate relative dot size (Jupiter = max) */
+function relativeSize(displayRadius, maxRadius, maxPx = 40) {
+  return Math.max(6, Math.round((displayRadius / maxRadius) * maxPx));
 }
 
 export function renderCompareTable() {
@@ -71,7 +71,7 @@ export function renderCompareCards() {
 
   for (const planet of data) {
     const hex = colorToHex(planet.color);
-    const dotSize = relativeSize(planet.displayRadius, maxR);
+    const dotSize = relativeSize(planet.displayRadius, maxR, 64);
     html += `
       <div class="compare-card" style="border-top: 3px solid ${hex};">
         <div class="compare-card-header" style="background: linear-gradient(135deg, ${hex}22 0%, transparent 60%);">

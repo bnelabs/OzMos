@@ -394,18 +394,23 @@ function endDedication() {
   setTimeout(() => {
     dedicationScreen.classList.add('hidden');
     dedicationScreen.classList.remove('fade-out');
-    showLangPicker();
+    if (localStorage.getItem(LANG_STORAGE_KEY)) {
+      initLang();
+      startApp();
+    } else {
+      showLangPicker();
+    }
   }, 1000);
 }
 
 // ==================== Boot ====================
 
-// Check if language was already chosen
-if (localStorage.getItem(LANG_STORAGE_KEY)) {
+// Boot — dedication takes priority
+if (!localStorage.getItem(DEDICATION_KEY)) {
+  showDedication();
+} else if (localStorage.getItem(LANG_STORAGE_KEY)) {
   initLang();
   startApp();
-} else if (!localStorage.getItem(DEDICATION_KEY)) {
-  showDedication();
 } else {
   showLangPicker();
 }
@@ -582,6 +587,26 @@ function wireCompactHandlers(key) {
       expandInfoPanel(key);
     });
   }
+
+  // Wire cutaway toggle in compact view
+  const cutawayBtn = document.getElementById('cutaway-btn');
+  const cutawayContainer = document.getElementById('cutaway-container');
+  if (cutawayBtn && cutawayContainer) {
+    cutawayBtn.addEventListener('click', () => {
+      const isHidden = cutawayContainer.style.display === 'none';
+      if (isHidden) {
+        disposeCutaway();
+        activeCutaway = new CutawayRenderer(cutawayContainer, cutawayBtn.dataset.planet);
+        activeCutaway.init();
+        cutawayContainer.style.display = '';
+        cutawayBtn.textContent = t('cutaway.hide');
+      } else {
+        disposeCutaway();
+        cutawayContainer.style.display = 'none';
+        cutawayBtn.textContent = t('cutaway.show');
+      }
+    });
+  }
 }
 
 function expandInfoPanel(key) {
@@ -689,6 +714,7 @@ infoClose.addEventListener('click', closeInfoPanel);
 planetThumbs.forEach(thumb => {
   thumb.addEventListener('click', () => {
     const key = thumb.dataset.planet;
+    if (!key) return;  // Skip toggle buttons without data-planet
     openInfoPanel(key);
   });
 });
