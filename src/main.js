@@ -331,7 +331,13 @@ function startApp() {
   wireSceneCallbacks();
 
   // Initialize audio (after user interaction via lang picker)
-  audioManager.init();
+  // Force unmuted on first load so music auto-plays
+  audioManager.init().then(() => {
+    if (!audioManager.playing) {
+      audioManager.play();
+    }
+    updateMusicIcon();
+  });
   updateMusicIcon();
 }
 
@@ -451,6 +457,7 @@ function endDedication() {
 
   dedicationScreen.classList.add('fade-out');
   localStorage.setItem(DEDICATION_KEY, '1');
+  sessionStorage.setItem('ozmos-dedication-played', '1');
   setTimeout(() => {
     dedicationScreen.classList.add('hidden');
     dedicationScreen.classList.remove('fade-out');
@@ -466,7 +473,8 @@ function endDedication() {
 // ==================== Boot ====================
 
 // Boot — dedication takes priority
-if (!localStorage.getItem(DEDICATION_KEY)) {
+// Show dedication every session (not just first visit) to showcase the music and poem
+if (!sessionStorage.getItem('ozmos-dedication-played')) {
   showDedication();
 } else if (localStorage.getItem(LANG_STORAGE_KEY)) {
   initLang();
@@ -580,6 +588,26 @@ function disposeCutaway() {
   if (container) container.innerHTML = '';
 }
 
+/** Get the planet mesh and renderer for on-planet cutaway rendering */
+function getPlanetMeshForCutaway(planetKey) {
+  if (!scene) return { mesh: null, renderer: null };
+  // Look up the actual 3D mesh in the scene
+  const planet = scene.planets[planetKey] || scene.dwarfPlanets?.[planetKey];
+  const mesh = planet ? planet.mesh : null;
+  const renderer = scene.renderer || null;
+  return { mesh, renderer };
+}
+
+function createCutawayForPlanet(container, planetKey) {
+  const { mesh, renderer } = getPlanetMeshForCutaway(planetKey);
+  if (mesh && renderer) {
+    // On-planet mode: render cross-section on the actual 3D planet
+    return new CutawayRenderer(container, planetKey, mesh, renderer);
+  }
+  // Fallback: legacy mini-renderer mode
+  return new CutawayRenderer(container, planetKey);
+}
+
 function wireInfoPanelHandlers() {
   // Wire up moon click handlers inside panel
   const moonItems = infoContent.querySelectorAll('.moon-item');
@@ -599,7 +627,7 @@ function wireInfoPanelHandlers() {
       const isHidden = cutawayContainer.style.display === 'none';
       if (isHidden) {
         disposeCutaway();
-        activeCutaway = new CutawayRenderer(cutawayContainer, cutawayBtn.dataset.planet);
+        activeCutaway = createCutawayForPlanet(cutawayContainer, cutawayBtn.dataset.planet);
         activeCutaway.init();
         cutawayContainer.style.display = '';
         cutawayBtn.textContent = t('cutaway.hide');
@@ -664,7 +692,7 @@ function wireCompactHandlers(key) {
       const isHidden = cutawayContainer.style.display === 'none';
       if (isHidden) {
         disposeCutaway();
-        activeCutaway = new CutawayRenderer(cutawayContainer, cutawayBtn.dataset.planet);
+        activeCutaway = createCutawayForPlanet(cutawayContainer, cutawayBtn.dataset.planet);
         activeCutaway.init();
         cutawayContainer.style.display = '';
         cutawayBtn.textContent = t('cutaway.hide');
@@ -749,7 +777,7 @@ function openMoonInfoPanel(planetKey, moonIndex) {
       const isHidden = cutawayContainer.style.display === 'none';
       if (isHidden) {
         disposeCutaway();
-        activeCutaway = new CutawayRenderer(cutawayContainer, cutawayBtn.dataset.planet);
+        activeCutaway = createCutawayForPlanet(cutawayContainer, cutawayBtn.dataset.planet);
         activeCutaway.init();
         cutawayContainer.style.display = '';
         cutawayBtn.textContent = t('cutaway.hide');

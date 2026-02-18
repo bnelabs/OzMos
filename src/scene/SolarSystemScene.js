@@ -11,6 +11,7 @@ import {
   sunVertexShader, sunFragmentShader,
   coronaVertexShader, coronaFragmentShader,
   coronaShellVertexShader, coronaShellFragmentShader,
+  prominenceVertexShader, prominenceFragmentShader,
 } from '../shaders/sunShader.js';
 import {
   atmosphereVertexShader, atmosphereFragmentShader,
@@ -335,12 +336,14 @@ export class SolarSystemScene {
     this.corona = new THREE.Mesh(coronaGeo, coronaMat);
     this.scene.add(this.corona);
 
-    // Volumetric corona shells — 4 concentric spheres with Fresnel glow
+    // Volumetric corona shells — 6 concentric spheres with noise-driven streamers
     const shellConfigs = [
-      { scale: 1.5, opacity: 0.12, color: new THREE.Color(1.0, 0.75, 0.25) },
-      { scale: 2.0, opacity: 0.06, color: new THREE.Color(1.0, 0.6, 0.15) },
-      { scale: 3.0, opacity: 0.025, color: new THREE.Color(1.0, 0.45, 0.08) },
-      { scale: 5.0, opacity: 0.008, color: new THREE.Color(1.0, 0.3, 0.03) },
+      { scale: 1.3, opacity: 0.18, color: new THREE.Color(1.0, 0.82, 0.35) },
+      { scale: 1.6, opacity: 0.12, color: new THREE.Color(1.0, 0.72, 0.25) },
+      { scale: 2.2, opacity: 0.07, color: new THREE.Color(1.0, 0.58, 0.15) },
+      { scale: 3.2, opacity: 0.035, color: new THREE.Color(1.0, 0.45, 0.08) },
+      { scale: 5.0, opacity: 0.015, color: new THREE.Color(1.0, 0.35, 0.05) },
+      { scale: 8.0, opacity: 0.005, color: new THREE.Color(1.0, 0.25, 0.02) },
     ];
     this.coronaShells = [];
     for (const cfg of shellConfigs) {
@@ -352,6 +355,7 @@ export class SolarSystemScene {
           uTime: { value: 0 },
           uOpacity: { value: cfg.opacity },
           uColor: { value: cfg.color },
+          uScale: { value: cfg.scale },
         },
         transparent: true,
         side: THREE.BackSide,
@@ -363,6 +367,9 @@ export class SolarSystemScene {
       this.coronaShells.push(shellMesh);
     }
 
+    // Solar prominences — arcs of plasma rising from the surface
+    this._createProminences(sunData.displayRadius);
+
     // Sun point light — bright with no decay so all planets are well-lit
     this.sunLight = new THREE.PointLight(0xFFF5E0, 3.5, 0, 0);
     this.sunLight.position.set(0, 0, 0);
@@ -373,6 +380,54 @@ export class SolarSystemScene {
       group: this.sun,
       data: sunData,
     };
+  }
+
+  _createProminences(sunRadius) {
+    this.prominences = [];
+    const promCount = 4;
+    for (let i = 0; i < promCount; i++) {
+      const pointCount = 40;
+      const positions = new Float32Array(pointCount * 3);
+      const progress = new Float32Array(pointCount);
+
+      // Random arc on sun surface
+      const baseAngle = (i / promCount) * Math.PI * 2 + Math.random() * 0.5;
+      const baseLat = (Math.random() - 0.5) * 1.2;
+      const arcSpan = 0.3 + Math.random() * 0.4;
+      const arcHeight = sunRadius * (0.3 + Math.random() * 0.5);
+
+      for (let j = 0; j < pointCount; j++) {
+        const t = j / (pointCount - 1);
+        const angle = baseAngle + (t - 0.5) * arcSpan;
+        const height = Math.sin(t * Math.PI) * arcHeight;
+        const r = sunRadius * 1.02 + height;
+
+        positions[j * 3] = Math.cos(angle) * Math.cos(baseLat) * r;
+        positions[j * 3 + 1] = Math.sin(baseLat) * r + height * 0.3;
+        positions[j * 3 + 2] = Math.sin(angle) * Math.cos(baseLat) * r;
+        progress[j] = t;
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('aProgress', new THREE.BufferAttribute(progress, 1));
+
+      const mat = new THREE.ShaderMaterial({
+        vertexShader: prominenceVertexShader,
+        fragmentShader: prominenceFragmentShader,
+        uniforms: {
+          uTime: { value: 0 },
+          uAge: { value: Math.random() * 0.5 },
+        },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+
+      const points = new THREE.Points(geo, mat);
+      this.scene.add(points);
+      this.prominences.push({ mesh: points, ageSpeed: 0.02 + Math.random() * 0.03 });
+    }
   }
 
   _createLighting() {
@@ -938,7 +993,9 @@ export class SolarSystemScene {
     const planetData = SOLAR_SYSTEM[key] || DWARF_PLANETS[key];
     if (!planetData) return;
     const radius = planetData.displayRadius;
-    const distance = radius * 5 + 3;
+    // Dwarf planets are tiny — get camera closer for visibility
+    const isDwarf = DWARF_PLANETS[key] !== undefined;
+    const distance = isDwarf ? radius * 3 + 2 : radius * 5 + 3;
 
     this.startCameraPos.copy(this.camera.position);
     this.startLookAt.copy(this.controls.target);
@@ -1306,6 +1363,17 @@ export class SolarSystemScene {
     if (this.coronaShells) {
       for (const shell of this.coronaShells) {
         shell.material.uniforms.uTime.value = elapsed;
+      }
+    }
+    // Update solar prominences
+    if (this.prominences) {
+      for (const prom of this.prominences) {
+        prom.mesh.material.uniforms.uTime.value = elapsed;
+        prom.mesh.material.uniforms.uAge.value += delta * prom.ageSpeed;
+        // Recycle prominence when faded out
+        if (prom.mesh.material.uniforms.uAge.value > 1.0) {
+          prom.mesh.material.uniforms.uAge.value = 0;
+        }
       }
     }
 

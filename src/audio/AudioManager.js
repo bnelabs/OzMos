@@ -29,9 +29,9 @@ class AudioManager {
     this.loaded = false;
     this.playing = false;
 
-    // Restore persisted state
+    // Restore persisted state — default to unmuted so music auto-plays
     const storedMuted = localStorage.getItem(STORAGE_KEY);
-    this.muted = storedMuted === null ? false : storedMuted === 'true';
+    this.muted = storedMuted === 'true'; // false by default (including when null)
 
     const storedVolume = localStorage.getItem(VOLUME_KEY);
     this._volume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
