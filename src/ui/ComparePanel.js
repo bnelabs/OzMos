@@ -50,7 +50,7 @@ export function renderCompareTable() {
         <td>${planet.gravity}</td>
         <td>${planet.dayLength}</td>
         <td>${planet.year}</td>
-        <td>${planet.moons}</td>
+        <td>${planet.moons > 0 ? planet.moons + ' ' + t('compare.known') : '0'}</td>
         <td>${planet.temperature}</td>
       </tr>`;
   }
@@ -87,7 +87,7 @@ export function renderCompareCards() {
           <div class="compare-card-stat"><div class="label">${t('compare.gravity')}</div><div class="value">${planet.gravity}</div></div>
           <div class="compare-card-stat"><div class="label">${t('compare.day')}</div><div class="value">${planet.dayLength}</div></div>
           <div class="compare-card-stat"><div class="label">${t('compare.year')}</div><div class="value">${planet.year}</div></div>
-          <div class="compare-card-stat"><div class="label">${t('compare.moons')}</div><div class="value">${planet.moons}</div></div>
+          <div class="compare-card-stat"><div class="label">${t('compare.moons')}</div><div class="value">${planet.moons > 0 ? planet.moons + ' ' + t('compare.known') : '0'}</div></div>
           <div class="compare-card-stat"><div class="label">${t('compare.temp')}</div><div class="value">${planet.temperature}</div></div>
           <div class="compare-card-stat"><div class="label">${t('compare.distance')}</div><div class="value">${planet.distance}</div></div>
         </div>

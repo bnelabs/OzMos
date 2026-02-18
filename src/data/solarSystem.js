@@ -52,6 +52,7 @@ export const SOLAR_SYSTEM = {
       'A photon generated in the Sun\'s core takes ~100,000 years to reach its surface.',
       'The Sun\'s magnetic field extends far beyond Pluto, forming the heliosphere.',
     ],
+    knownMoons: 0,
     moons: [],
   },
 
@@ -105,6 +106,7 @@ export const SOLAR_SYSTEM = {
       'Mercury has shrunk by about 7 km in radius as its core slowly cools.',
       'Despite being closest to the Sun, ice exists in permanently shadowed polar craters.',
     ],
+    knownMoons: 0,
     moons: [],
   },
 
@@ -158,6 +160,7 @@ export const SOLAR_SYSTEM = {
       'On Venus, the Sun rises in the west and sets in the east due to retrograde rotation.',
       'The atmospheric pressure on Venus would crush a submarine.',
     ],
+    knownMoons: 0,
     moons: [],
   },
 
@@ -211,6 +214,7 @@ export const SOLAR_SYSTEM = {
       'The planet\'s rotation is gradually slowing — days are getting longer by about 2.3 milliseconds per century.',
       'Earth is the only planet not named after a Greek or Roman deity.',
     ],
+    knownMoons: 1,
     moons: [
       {
         name: 'Moon (Luna)',
@@ -276,6 +280,7 @@ export const SOLAR_SYSTEM = {
       'Mars has the largest dust storms in the solar system, sometimes engulfing the entire planet.',
       'A 68 kg person would weigh only 25 kg on Mars.',
     ],
+    knownMoons: 2,
     moons: [
       {
         name: 'Phobos',
@@ -310,7 +315,7 @@ export const SOLAR_SYSTEM = {
     color: 0xC88B3A,
     radius: 11.21,
     displayRadius: 4.5,
-    orbitRadius: 62,
+    orbitRadius: 74,
     orbitSpeed: 0.01,
     rotationSpeed: 0.02412,
     axialTilt: 3.13,
@@ -352,6 +357,7 @@ export const SOLAR_SYSTEM = {
       'The planet emits more heat than it receives from the Sun due to gravitational contraction.',
       'Jupiter\'s magnetic field creates aurora 1,000× more powerful than Earth\'s.',
     ],
+    knownMoons: 95,
     moons: [
       {
         name: 'Io',
@@ -408,7 +414,7 @@ export const SOLAR_SYSTEM = {
     color: 0xC5AB6E,
     radius: 9.45,
     displayRadius: 3.8,
-    orbitRadius: 82,
+    orbitRadius: 94,
     orbitSpeed: 0.007,
     rotationSpeed: 0.02247,
     axialTilt: 26.73,
@@ -453,6 +459,7 @@ export const SOLAR_SYSTEM = {
       'Saturn is so lightweight that it would float in a bathtub large enough to hold it.',
       'Wind speeds on Saturn can reach 1,800 km/h near the equator.',
     ],
+    knownMoons: 146,
     moons: [
       {
         name: 'Titan',
@@ -509,7 +516,7 @@ export const SOLAR_SYSTEM = {
     color: 0x72B5C4,
     radius: 4.01,
     displayRadius: 2.8,
-    orbitRadius: 104,
+    orbitRadius: 116,
     orbitSpeed: 0.004,
     rotationSpeed: -0.01389, // retrograde
     axialTilt: 97.77,
@@ -554,6 +561,7 @@ export const SOLAR_SYSTEM = {
       'It may rain diamonds in Uranus\'s interior.',
       'Its magnetic field is bizarrely tilted 59° from the rotation axis.',
     ],
+    knownMoons: 28,
     moons: [
       {
         name: 'Miranda',
@@ -610,7 +618,7 @@ export const SOLAR_SYSTEM = {
     color: 0x3E54A3,
     radius: 3.88,
     displayRadius: 2.7,
-    orbitRadius: 124,
+    orbitRadius: 136,
     orbitSpeed: 0.003,
     rotationSpeed: 0.01486,
     axialTilt: 28.32,
@@ -655,6 +663,7 @@ export const SOLAR_SYSTEM = {
       'Winds on Neptune can exceed 2,100 km/h — the fastest in the solar system.',
       'Neptune has completed only one orbit since its discovery in 1846 (completed in 2011).',
     ],
+    knownMoons: 16,
     moons: [
       {
         name: 'Triton',
@@ -708,7 +717,7 @@ export function getComparisonData() {
       gravity: p.gravity,
       dayLength: p.dayLength,
       year: p.orbitalPeriod,
-      moons: p.moons.length,
+      moons: p.knownMoons !== undefined ? p.knownMoons : p.moons.length,
       temperature: p.temperature,
       distance: p.distanceFromSun,
     };

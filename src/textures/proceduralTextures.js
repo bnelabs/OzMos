@@ -1037,3 +1037,170 @@ export function generateRingTexture(size = 1024) {
   ctx.putImageData(imageData, 0, 0);
   return canvas;
 }
+
+// ==================== DWARF PLANET TEXTURES ====================
+
+/** Ceres: grey/brown with bright spots (Occator), craters */
+export function generateCeresTexture(size = 512) {
+  const { canvas, ctx } = createCanvas(size, size / 2);
+  const imageData = ctx.createImageData(size, size / 2);
+  const data = imageData.data;
+  const noise = createNoiseGenerator(801);
+  const noise2 = createNoiseGenerator(802);
+  const h = size / 2;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = x / size * 8;
+      const ny = y / h * 4;
+
+      const terrain = fbm(noise, nx, ny, 6, 0.55, 2.0) * 0.5 + 0.5;
+      const craters = Math.max(0, -fbm(noise2, nx * 3 + 50, ny * 3 + 50, 4, 0.6, 2.2) * 0.6);
+      let value = terrain - craters;
+
+      // Occator-like bright spots
+      const spotX = (x / size - 0.35);
+      const spotY = (y / h - 0.45);
+      const spotDist = Math.sqrt(spotX * spotX + spotY * spotY);
+      const spot = spotDist < 0.03 ? (1 - spotDist / 0.03) * 0.6 : 0;
+
+      value = clamp(value + spot, 0, 1);
+      const [r, g, b] = blendColors(60, 60, 55, 150, 148, 140, value);
+
+      const i = (y * size + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/** Pluto: heart-shaped nitrogen ice, reddish tholins, methane terrain */
+export function generatePlutoTexture(size = 512) {
+  const { canvas, ctx } = createCanvas(size, size / 2);
+  const imageData = ctx.createImageData(size, size / 2);
+  const data = imageData.data;
+  const noise = createNoiseGenerator(930);
+  const noise2 = createNoiseGenerator(931);
+  const h = size / 2;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = x / size * 8;
+      const ny = y / h * 4;
+
+      const terrain = fbm(noise, nx, ny, 6, 0.5, 2.0) * 0.5 + 0.5;
+      const detail = fbm(noise2, nx * 4, ny * 4, 4, 0.4, 2.2) * 0.15;
+
+      // Heart-shaped Sputnik Planitia region
+      const hx = (x / size - 0.4);
+      const hy = (y / h - 0.5);
+      const heartDist = Math.sqrt(hx * hx * 1.2 + hy * hy);
+      const isHeart = heartDist < 0.12;
+
+      let r, g, b;
+      if (isHeart) {
+        const iceVal = 0.8 + fbm(noise2, nx * 2, ny * 2, 3, 0.3, 2.0) * 0.1;
+        [r, g, b] = blendColors(180, 170, 155, 220, 210, 195, clamp(iceVal, 0, 1));
+      } else {
+        const val = clamp(terrain + detail, 0, 1);
+        [r, g, b] = blendColors(120, 85, 65, 195, 165, 130, val);
+      }
+
+      // Polar frost
+      const lat = Math.abs(y / h - 0.5) * 2;
+      if (lat > 0.8) {
+        const frost = (lat - 0.8) / 0.2;
+        [r, g, b] = blendColors(r, g, b, 200, 195, 185, frost * 0.5);
+      }
+
+      const i = (y * size + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/** Haumea: bright crystalline water ice, subtle features */
+export function generateHaumeaTexture(size = 512) {
+  const { canvas, ctx } = createCanvas(size, size / 2);
+  const imageData = ctx.createImageData(size, size / 2);
+  const data = imageData.data;
+  const noise = createNoiseGenerator(126);
+  const h = size / 2;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = x / size * 10;
+      const ny = y / h * 5;
+
+      const ice = fbm(noise, nx, ny, 5, 0.45, 2.0) * 0.5 + 0.5;
+      const fractures = Math.abs(fbm(noise, nx * 6 + 100, ny * 6 + 100, 3, 0.4, 2.0)) * 0.15;
+      const val = clamp(ice + fractures, 0, 1);
+
+      const [r, g, b] = blendColors(180, 178, 172, 225, 222, 215, val);
+      const i = (y * size + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/** Makemake: frozen methane/ethane with reddish tholins */
+export function generateMakemakeTexture(size = 512) {
+  const { canvas, ctx } = createCanvas(size, size / 2);
+  const imageData = ctx.createImageData(size, size / 2);
+  const data = imageData.data;
+  const noise = createNoiseGenerator(2005);
+  const noise2 = createNoiseGenerator(2006);
+  const h = size / 2;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = x / size * 8;
+      const ny = y / h * 4;
+
+      const terrain = fbm(noise, nx, ny, 6, 0.5, 2.0) * 0.5 + 0.5;
+      const tholins = fbm(noise2, nx * 2 + 50, ny * 2 + 50, 4, 0.45, 2.0) * 0.5 + 0.5;
+
+      const val = clamp(terrain, 0, 1);
+      const thVal = clamp(tholins, 0, 1);
+      let [r, g, b] = blendColors(155, 130, 105, 200, 175, 145, val);
+      r = clamp(r + thVal * 20, 0, 255);
+      g = clamp(g - thVal * 5, 0, 255);
+
+      const i = (y * size + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/** Eris: extremely reflective nitrogen ice, nearly white */
+export function generateErisTexture(size = 512) {
+  const { canvas, ctx } = createCanvas(size, size / 2);
+  const imageData = ctx.createImageData(size, size / 2);
+  const data = imageData.data;
+  const noise = createNoiseGenerator(2003);
+  const h = size / 2;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = x / size * 8;
+      const ny = y / h * 4;
+
+      const ice = fbm(noise, nx, ny, 5, 0.4, 2.0) * 0.5 + 0.5;
+      const cracks = Math.abs(fbm(noise, nx * 8 + 200, ny * 8 + 200, 3, 0.5, 2.0)) * 0.1;
+      const val = clamp(ice - cracks, 0, 1);
+
+      const [r, g, b] = blendColors(190, 190, 195, 235, 235, 240, val);
+      const i = (y * size + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}

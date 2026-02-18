@@ -87,7 +87,7 @@ export function getLocalizedComparisonData() {
       gravity: p.gravity,
       dayLength: p.dayLength,
       year: p.orbitalPeriod,
-      moons: p.moons.length,
+      moons: p.knownMoons !== undefined ? p.knownMoons : p.moons.length,
       temperature: p.temperature,
       distance: p.distanceFromSun,
       color: base.color,

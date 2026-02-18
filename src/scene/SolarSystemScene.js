@@ -32,6 +32,8 @@ import {
   generateBumpMap, generateEarthRoughnessMap, generateMarsRoughnessMap,
   generateEarthCityLights,
   generateRoughnessFromTexture, generateCityLightsFromTexture,
+  generateCeresTexture, generatePlutoTexture, generateHaumeaTexture,
+  generateMakemakeTexture, generateErisTexture,
 } from '../textures/proceduralTextures.js';
 import { loadAllTextures } from '../textures/textureLoader.js';
 
@@ -44,6 +46,11 @@ const TEXTURE_GENERATORS = {
   saturn: generateSaturnTexture,
   uranus: generateUranusTexture,
   neptune: generateNeptuneTexture,
+  ceres: generateCeresTexture,
+  pluto: generatePlutoTexture,
+  haumea: generateHaumeaTexture,
+  makemake: generateMakemakeTexture,
+  eris: generateErisTexture,
 };
 
 export class SolarSystemScene {
@@ -894,13 +901,25 @@ export class SolarSystemScene {
       tiltGroup.rotation.x = THREE.MathUtils.degToRad(planetData.orbitInclination || 0);
       orbitGroup.add(tiltGroup);
 
-      const segments = 24;
+      const segments = 48;
       const planetGeo = new THREE.SphereGeometry(planetData.displayRadius, segments, segments);
-      const planetMat = new THREE.MeshStandardMaterial({
-        color: planetData.color,
-        roughness: 0.85,
-        metalness: 0.05,
-      });
+      let planetMat;
+      if (TEXTURE_GENERATORS[key]) {
+        const texCanvas = TEXTURE_GENERATORS[key](512);
+        const texture = new THREE.CanvasTexture(texCanvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        planetMat = new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.85,
+          metalness: 0.05,
+        });
+      } else {
+        planetMat = new THREE.MeshStandardMaterial({
+          color: planetData.color,
+          roughness: 0.85,
+          metalness: 0.05,
+        });
+      }
 
       const planetMesh = new THREE.Mesh(planetGeo, planetMat);
       planetMesh.position.x = planetData.orbitRadius;
@@ -1588,20 +1607,8 @@ export class SolarSystemScene {
         ? 16 * t * t * t * t * t
         : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
-      // If tracking a selected planet, update target
-      if (this.selectedPlanet) {
-        const currentPos = this.getPlanetWorldPosition(this.selectedPlanet);
-        const pData = SOLAR_SYSTEM[this.selectedPlanet] || DWARF_PLANETS[this.selectedPlanet] || ASTEROIDS[this.selectedPlanet];
-        const radius = pData ? pData.displayRadius : 1;
-        const isDwarfOrAsteroid = DWARF_PLANETS[this.selectedPlanet] || ASTEROIDS[this.selectedPlanet];
-        const distance = isDwarfOrAsteroid ? radius * 3 + 2 : radius * 5 + 3;
-        this.targetCameraPos.set(
-          currentPos.x + distance * 0.7,
-          currentPos.y + distance * 0.4,
-          currentPos.z + distance * 0.7
-        );
-        this.targetLookAt.copy(currentPos);
-      }
+      // After transition completes, snap to current planet position
+      // During transition, keep the fixed target to avoid jitter
 
       // Cinematic spline sweep (on initial load)
       if (this._cinematicSpline) {

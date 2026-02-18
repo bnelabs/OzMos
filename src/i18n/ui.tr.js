@@ -85,6 +85,7 @@ export const ui_tr = {
   'compare.day': 'Gün',
   'compare.year': 'Yıl',
   'compare.moons': 'Uydular',
+  'compare.known': 'bilinen',
   'compare.temp': 'Sıcaklık',
   'compare.distance': 'Mesafe',
 

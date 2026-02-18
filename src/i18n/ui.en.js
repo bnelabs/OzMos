@@ -85,6 +85,7 @@ export const ui_en = {
   'compare.day': 'Day',
   'compare.year': 'Year',
   'compare.moons': 'Moons',
+  'compare.known': 'known',
   'compare.temp': 'Temp',
   'compare.distance': 'Distance',
 

@@ -1081,6 +1081,11 @@ body.nav-sheet-open::after {
   transition: var(--transition);
 }
 
+.mineral-tag[title] {
+  cursor: help;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
 .mineral-tag:hover {
   background: rgba(74, 158, 255, 0.1);
   border-color: var(--accent);
@@ -2061,6 +2066,39 @@ kbd {
     max-width: calc(100vw - var(--space-6));
     bottom: var(--space-4);
     overflow: visible;
+  }
+}
+
+/* ===== iPad / Small Tablet (768-1023px) ===== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  #info-panel {
+    width: min(340px, 45vw);
+  }
+
+  #compare-panel {
+    width: 92vw;
+    max-width: 900px;
+    padding: var(--space-4);
+  }
+
+  .compare-table {
+    font-size: 0.72rem;
+  }
+
+  .info-header h1 {
+    font-size: 1.6rem;
+  }
+
+  #info-content {
+    padding: var(--space-3) var(--space-4) var(--space-6);
+  }
+
+  .info-grid {
+    gap: var(--space-2);
+  }
+
+  .info-stat-value {
+    font-size: 0.82rem;
   }
 }
 

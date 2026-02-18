@@ -2,8 +2,17 @@
  * Generates HTML content for planet/moon info panels.
  */
 import { getLocalizedPlanet } from '../i18n/localizedData.js';
-import { t } from '../i18n/i18n.js';
+import { t, getLang } from '../i18n/i18n.js';
 import { PLANET_LAYERS } from '../data/planetLayers.js';
+import { MINERAL_INFO, MINERAL_INFO_TR } from '../data/mineralInfo.js';
+
+function getMineralTooltip(mineralName) {
+  const lang = getLang();
+  if (lang === 'tr' && MINERAL_INFO_TR[mineralName]) return MINERAL_INFO_TR[mineralName];
+  // Try English lookup (works for both EN minerals and untranslated TR minerals)
+  if (MINERAL_INFO[mineralName]) return MINERAL_INFO[mineralName];
+  return '';
+}
 
 /**
  * Compact planet summary — shows only name, type, and 3-4 key stats.
@@ -133,7 +142,10 @@ export function renderPlanetInfo(key) {
       <h3>${t('info.minerals')}</h3>
       <div class="mineral-tags">`;
     for (const mineral of data.minerals) {
-      html += `<span class="mineral-tag">${mineral}</span>`;
+      const tip = getMineralTooltip(mineral);
+      html += tip
+        ? `<span class="mineral-tag" title="${tip.replace(/"/g, '&quot;')}">${mineral}</span>`
+        : `<span class="mineral-tag">${mineral}</span>`;
     }
     html += `</div></div>`;
   }
@@ -239,7 +251,10 @@ export function renderMoonInfo(planetKey, moonIndex) {
       <h3>${t('moon.keyMinerals')}</h3>
       <div class="mineral-tags">`;
     for (const mineral of moon.minerals) {
-      html += `<span class="mineral-tag">${mineral}</span>`;
+      const tip = getMineralTooltip(mineral);
+      html += tip
+        ? `<span class="mineral-tag" title="${tip.replace(/"/g, '&quot;')}">${mineral}</span>`
+        : `<span class="mineral-tag">${mineral}</span>`;
     }
     html += `</div></div>`;
   }

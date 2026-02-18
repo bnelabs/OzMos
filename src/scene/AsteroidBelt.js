@@ -18,8 +18,8 @@ export class AsteroidBelt {
     this._quality = isMobile ? 'low' : 'high';
   }
 
-  createMainBelt(innerRadius = 50, outerRadius = 58, count = 3000) {
-    if (this._quality === 'low') count = 1500;
+  createMainBelt(innerRadius = 50, outerRadius = 58, count = 1500) {
+    if (this._quality === 'low') count = 750;
 
     this._mainBeltGroup = new THREE.Group();
 
@@ -134,7 +134,7 @@ export class AsteroidBelt {
     }
   }
 
-  createKuiperBelt(innerRadius = 128, outerRadius = 165, count = 2000) {
+  createKuiperBelt(innerRadius = 140, outerRadius = 180, count = 1000) {
     this.kuiperBelt = this._createPointsBelt(innerRadius, outerRadius, count, 5.0, 'kuiper');
     this.scene.add(this.kuiperBelt);
   }
