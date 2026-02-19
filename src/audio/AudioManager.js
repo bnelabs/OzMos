@@ -14,8 +14,8 @@ const TRACK_PATHS = {
   calm: '/audio/ambient.mp3',
   epic: '/audio/epic.mp3',
   contemplative: '/audio/contemplative.mp3',
-  landing: '/audio/landing.mp3',       // Cinematic Space Journey – Interstellar Odyssey
-  navigation: '/audio/navigation.mp3', // Space Epic Cinematic Journey
+  landing: '/audio/contemplative.mp3',    // Cinematic / interstellar
+  navigation: '/audio/epic.mp3',          // Epic journey
 };
 
 const CONTEXT_TRACKS = {
@@ -155,7 +155,7 @@ class AudioManager {
     }
   }
 
-  /** Equal-power crossfade between current and target track — lazy-loads if needed */
+  /** Sequential fade: fade out old track first, then fade in new track — no simultaneous playback */
   async crossfadeTo(trackId, duration) {
     if (!this.loaded) return;
     if (this.ctx && this.ctx.state === 'suspended') await this.ctx.resume();
@@ -163,34 +163,38 @@ class AudioManager {
       await this._loadTrack(trackId);
       if (!this.tracks.has(trackId)) return;
     }
-    duration = duration || this._crossfadeDuration;
+    if (this.currentTrack === trackId && this.playing) return;
 
+    const fadeOut = 0.5;
+    const fadeIn  = 0.7;
     const now = this.ctx.currentTime;
 
-    // Fade out current
+    // Step 1: fade out the currently playing track
     if (this.currentTrack) {
       const oldTrack = this.tracks.get(this.currentTrack);
       if (oldTrack) {
         oldTrack.gain.gain.cancelScheduledValues(now);
         oldTrack.gain.gain.setValueAtTime(oldTrack.gain.gain.value, now);
-        oldTrack.gain.gain.linearRampToValueAtTime(0, now + duration);
-        // Stop old source after fade
+        oldTrack.gain.gain.linearRampToValueAtTime(0, now + fadeOut);
         const oldSource = oldTrack.source;
         setTimeout(() => {
           try { if (oldSource) oldSource.stop(); } catch {}
-        }, duration * 1000 + 100);
+        }, fadeOut * 1000 + 100);
       }
     }
 
-    // Start and fade in new
-    this._startSource(trackId);
-    const newTrack = this.tracks.get(trackId);
-    newTrack.gain.gain.cancelScheduledValues(now);
-    newTrack.gain.gain.setValueAtTime(0, now);
-    newTrack.gain.gain.linearRampToValueAtTime(1, now + duration);
-
+    // Step 2: after fade-out completes, start and fade in the new track
     this.currentTrack = trackId;
     this.playing = true;
+    setTimeout(() => {
+      this._startSource(trackId);
+      const newTrack = this.tracks.get(trackId);
+      if (!newTrack) return;
+      const t = this.ctx.currentTime;
+      newTrack.gain.gain.cancelScheduledValues(t);
+      newTrack.gain.gain.setValueAtTime(0, t);
+      newTrack.gain.gain.linearRampToValueAtTime(1, t + fadeIn);
+    }, (fadeOut + 0.1) * 1000);
   }
 
   /**

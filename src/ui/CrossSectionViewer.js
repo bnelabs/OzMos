@@ -527,6 +527,8 @@ export class CrossSectionViewer {
 
     this._rowEls = [];
     this._activeLayerIndex = -1;
+    this._expandTarget  = [];
+    this._expandCurrent = [];
 
     // Remove all badge elements
     for (const b of this._badges) b.remove();
@@ -598,6 +600,8 @@ export class CrossSectionViewer {
     this._layerMeshes   = [];
     this._faceMeshes    = [];
     this._boundaryRings = [];
+    this._expandTarget  = []; // target x-offset for each layer (0 = resting, 0.22 = expanded)
+    this._expandCurrent = []; // current lerped x-offset for each layer
 
     // ── Starfield ──
     this._starfield = this._buildStarfield();
@@ -640,6 +644,10 @@ export class CrossSectionViewer {
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 64, 48), mat);
       this._layerMeshes.push(mesh);
     }
+
+    // Initialise expansion state arrays now that _layerMeshes is fully populated
+    this._expandTarget  = new Array(this._layerMeshes.length).fill(0);
+    this._expandCurrent = new Array(this._layerMeshes.length).fill(0);
 
     // ── Cut-face disc ──
     // Full circle at x=0.002, facing +X (toward camera).
@@ -770,6 +778,18 @@ export class CrossSectionViewer {
     // ── Update badge positions every frame ──
     if (this._badges.length > 0 && this._renderer && this._camera) {
       this._updateBadgePositions();
+    }
+
+    // ── Layer expansion lerp ──
+    if (this._expandTarget && this._expandCurrent) {
+      for (let i = 0; i < this._layerMeshes.length; i++) {
+        this._expandCurrent[i] += (this._expandTarget[i] - this._expandCurrent[i]) * 0.12;
+        this._layerMeshes[i].position.x = this._expandCurrent[i];
+        // Move the boundary ring with its layer
+        if (this._boundaryRings[i]) {
+          this._boundaryRings[i].position.x = 0.005 + this._expandCurrent[i];
+        }
+      }
     }
 
     if (this._renderer && this._scene && this._camera) {
@@ -1031,6 +1051,13 @@ export class CrossSectionViewer {
     const ring = this._boundaryRings[index];
     if (ring) {
       ring.material.opacity = entering ? 1.0 : 0.85;
+    }
+
+    // Expand the hovered layer outward along +X so it separates from the cut face
+    if (this._expandTarget) {
+      for (let i = 0; i < this._expandTarget.length; i++) {
+        this._expandTarget[i] = (entering && i === index) ? 0.22 : 0;
+      }
     }
   }
 

@@ -396,11 +396,8 @@ export class SolarSystemScene {
     this.corona = new THREE.Mesh(coronaGeo, coronaMat);
     this.scene.add(this.corona);
 
-    // Volumetric corona shells — 2 concentric spheres with noise-driven streamers
-    const shellConfigs = [
-      { scale: 1.3, opacity: 0.18, color: new THREE.Color(1.0, 0.82, 0.35) },
-      { scale: 1.6, opacity: 0.08, color: new THREE.Color(1.0, 0.72, 0.25) },
-    ];
+    // Corona shells removed — sun_8k.jpg texture provides realistic appearance
+    const shellConfigs = [];
     this.coronaShells = [];
     for (const cfg of shellConfigs) {
       const shellGeo = new THREE.SphereGeometry(sunData.displayRadius * cfg.scale, 48, 48);
@@ -904,9 +901,7 @@ export class SolarSystemScene {
 
       for (let i = 0; i <= segments; i++) {
         const angle = (i / segments) * Math.PI * 2;
-        // Account for eccentricity (simplified ellipse)
-        const e = planetData.eccentricity || 0;
-        const r = planetData.orbitRadius * (1 - e * e) / (1 + e * Math.cos(angle));
+        const r = planetData.orbitRadius;
         points.push(
           Math.cos(angle) * r,
           0,
@@ -925,14 +920,12 @@ export class SolarSystemScene {
         gapSize: 0.4,
       });
 
-      if (['mercury', 'venus'].includes(key)) {
-        orbitMat.dashSize = 3.0;
-        orbitMat.gapSize  = 0.2;
-        orbitMat.opacity  = 0.07;
-      }
-
       const orbitLine = new THREE.Line(orbitGeo, orbitMat);
       orbitLine.computeLineDistances();
+      // Hide inner planet orbits — they look like dotted rings around the sun
+      if (['mercury', 'venus', 'earth'].includes(key)) {
+        orbitLine.visible = false;
+      }
       // Apply inclination
       orbitLine.rotation.x = THREE.MathUtils.degToRad(planetData.orbitInclination || 0);
       this.scene.add(orbitLine);
