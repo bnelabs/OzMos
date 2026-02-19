@@ -2,12 +2,13 @@
  * AudioManager — multi-track music system with crossfade and context-aware switching.
  * Uses Web Audio API with per-track gain nodes and a master gain.
  */
-import { storageGet, storageSet } from '../utils/storage.js';
+import { storageGet, storageSet, storageRemove } from '../utils/storage.js';
 
 const STORAGE_KEY = 'ozmos-music-muted';
-const VOLUME_KEY = 'ozmos-music-volume';
-const TRACK_KEY = 'ozmos-music-track';
-const AUTO_KEY = 'ozmos-music-auto';
+const VOLUME_KEY  = 'ozmos-music-volume';
+const TRACK_KEY   = 'ozmos-music-track';
+const AUTO_KEY    = 'ozmos-music-auto';
+const LOCKED_KEY  = 'ozmos-music-locked'; // true when user has manually chosen a track
 
 const TRACK_PATHS = {
   calm: '/audio/ambient.mp3',
@@ -40,6 +41,8 @@ class AudioManager {
     this._volume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
 
     this._preferredTrack = storageGet(TRACK_KEY, ['calm', 'epic', 'contemplative', 'landing', 'navigation'], 'landing');
+    // Locked = user has manually picked a track, context switching should not override it
+    this._userOverride = storageGet(LOCKED_KEY) === 'true';
 
     const storedAuto = storageGet(AUTO_KEY);
     this.autoSwitch = storedAuto === null ? true : storedAuto === 'true';
@@ -61,13 +64,24 @@ class AudioManager {
       return;
     }
 
-    // Lazy-load: only fetch the preferred track now; load others on demand
+    // Try to load the preferred track; fall back to existing tracks if file is missing
     await this._loadTrack(this._preferredTrack);
+    if (this.tracks.size === 0) {
+      // Preferred file not available — try known fallbacks in order
+      for (const id of ['calm', 'epic', 'contemplative', 'navigation', 'landing']) {
+        if (id === this._preferredTrack) continue;
+        await this._loadTrack(id);
+        if (this.tracks.size > 0) break;
+      }
+    }
     this.loaded = this.tracks.size > 0;
 
     // Auto-play if user previously opted in (not muted)
     if (this.loaded && !this.muted) {
-      this._playTrack(this._preferredTrack);
+      const startTrack = this.tracks.has(this._preferredTrack)
+        ? this._preferredTrack
+        : this.tracks.keys().next().value;
+      this._playTrack(startTrack);
     }
   }
 
@@ -171,12 +185,24 @@ class AudioManager {
 
     this.currentTrack = trackId;
     this.playing = true;
-    storageSet(TRACK_KEY, trackId);
   }
 
-  /** Context-aware auto-switching */
+  /**
+   * Explicit user track selection — locks context-switching off until
+   * the user re-enables auto-switch via the checkbox.
+   */
+  selectTrack(trackId) {
+    this._preferredTrack = trackId;
+    this._userOverride   = true;
+    storageSet(TRACK_KEY,  trackId);
+    storageSet(LOCKED_KEY, 'true');
+    if (this.isMuted) this.play();
+    return this.crossfadeTo(trackId);
+  }
+
+  /** Context-aware auto-switching — skipped when user has manually locked a track */
   setContext(context) {
-    if (!this.autoSwitch || this.muted) return;
+    if (!this.autoSwitch || this.muted || this._userOverride) return;
     const targetTrack = CONTEXT_TRACKS[context];
     if (targetTrack && targetTrack !== this.currentTrack) {
       this.crossfadeTo(targetTrack);
@@ -233,6 +259,11 @@ class AudioManager {
   setAutoSwitch(enabled) {
     this.autoSwitch = enabled;
     storageSet(AUTO_KEY, String(enabled));
+    // Re-enabling auto-switch clears the manual lock so context switching resumes
+    if (enabled) {
+      this._userOverride = false;
+      storageRemove(LOCKED_KEY);
+    }
   }
 
   getAutoSwitch() {

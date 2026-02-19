@@ -1317,11 +1317,11 @@ if (musicPanel) {
   trackBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const trackId = btn.dataset.track;
-      if (audioManager.isMuted) {
-        audioManager.play();
-        updateMusicIcon();
-      }
-      audioManager.crossfadeTo(trackId);
+      // selectTrack locks context-switching so this choice persists
+      audioManager.selectTrack(trackId);
+      updateMusicIcon();
+      // Sync the auto-switch checkbox to reflect the lock
+      if (musicAutoSwitch) musicAutoSwitch.checked = false;
       updateMusicTrackButtons();
     });
   });
