@@ -275,6 +275,23 @@ function refreshStaticText() {
       if (data) el.textContent = data.name;
     }
   }
+
+  // Update planet bar thumb names (Issue 1E)
+  document.querySelectorAll('.planet-thumb[data-planet]').forEach(thumb => {
+    const key = thumb.dataset.planet;
+    const span = thumb.querySelector('span:not(.thumb-dot):not(.thumb-dot *)');
+    if (span && key) {
+      const data = getLocalizedPlanet(key);
+      if (data && data.name) span.textContent = data.name;
+    }
+  });
+
+  // Update aria-labels on nav buttons with data-i18n-aria attribute (Issue 1F)
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const key = el.getAttribute('data-i18n-aria');
+    const val = t(key);
+    if (val) el.setAttribute('aria-label', val);
+  });
 }
 
 function refreshOpenPanels() {
@@ -314,9 +331,17 @@ function refreshOpenPanels() {
   }
 
   // Re-render quiz panel if open and showing menu
-  if (quizPanel && !quizPanel.classList.contains('hidden') && !quizActive) {
-    safeRender(quizContent, () => renderQuizMenu());
-    wireQuizMenuHandlers();
+  if (quizPanel && !quizPanel.classList.contains('hidden')) {
+    if (!quizActive) {
+      safeRender(quizContent, () => renderQuizMenu());
+      wireQuizMenuHandlers();
+    } else if (quizCurrentIndex < quizQuestions.length) {
+      // Re-render current question in new language
+      safeRender(quizContent, () => renderQuizQuestion(
+        quizQuestions[quizCurrentIndex], quizCurrentIndex, quizQuestions.length, null
+      ));
+      wireQuizQuestionHandlers(quizQuestions[quizCurrentIndex]);
+    }
   }
 }
 
@@ -1274,7 +1299,7 @@ function updateMusicIcon() {
 
 function updateMusicTrackButtons() {
   const trackBtns = musicPanel ? musicPanel.querySelectorAll('.music-track') : [];
-  const current = audioManager.getCurrentTrack();
+  const current = audioManager.getCurrentTrack() || audioManager.getPreferredTrack();
   trackBtns.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.track === current);
   });

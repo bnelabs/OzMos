@@ -49,6 +49,7 @@ class AudioManager {
 
     this._crossfadeDuration = 2.5;
     this._rampTime = 0.5;
+    this._pendingTrack = null; // track queued before audio context is ready
   }
 
   /** Initialize AudioContext (must be called after user interaction). */
@@ -78,9 +79,13 @@ class AudioManager {
 
     // Auto-play if user previously opted in (not muted)
     if (this.loaded && !this.muted) {
-      const startTrack = this.tracks.has(this._preferredTrack)
-        ? this._preferredTrack
-        : this.tracks.keys().next().value;
+      // Honour any track selection made before audio was ready
+      const startTrack = this._pendingTrack && this.tracks.has(this._pendingTrack)
+        ? this._pendingTrack
+        : this.tracks.has(this._preferredTrack)
+          ? this._preferredTrack
+          : this.tracks.keys().next().value;
+      this._pendingTrack = null;
       this._playTrack(startTrack);
     }
   }
@@ -194,8 +199,11 @@ class AudioManager {
   selectTrack(trackId) {
     this._preferredTrack = trackId;
     this._userOverride   = true;
+    this.autoSwitch      = false;
     storageSet(TRACK_KEY,  trackId);
     storageSet(LOCKED_KEY, 'true');
+    storageSet(AUTO_KEY,   'false');
+    if (!this.loaded) { this._pendingTrack = trackId; return; }
     if (this.isMuted) this.play();
     return this.crossfadeTo(trackId);
   }
@@ -272,6 +280,10 @@ class AudioManager {
 
   getCurrentTrack() {
     return this.currentTrack;
+  }
+
+  getPreferredTrack() {
+    return this._preferredTrack;
   }
 
   getAvailableTracks() {

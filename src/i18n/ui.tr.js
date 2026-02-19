@@ -4,6 +4,7 @@
 export const ui_tr = {
   // Brand
   'brand.tagline': 'Güneş Sistemi Kaşifi',
+  'brand.subtitle': 'Ozan Kozmos ile Buluşuyor',
 
   // Loading
   'loading.title': 'OzMos',
@@ -197,6 +198,7 @@ export const ui_tr = {
 
   // Mission UI
   'nav.missions': 'Görevler',
+  'nav.storm': 'Fırtına',
   'missions.title': 'NASA Görevleri',
   'missions.launch': 'Fırlatma',
   'missions.status': 'Durum',
@@ -240,6 +242,8 @@ export const ui_tr = {
   // Tour
   'nav.tour': 'Tur',
   'aria.tour': 'Sinematik Tur',
+  'aria.missions': 'NASA Görevleri',
+  'aria.storm': 'Güneş Fırtınası Simülasyonu',
 
   // Planet layer names
   'layer.mercury.crust': 'Kabuk',
@@ -1043,4 +1047,26 @@ export const ui_tr = {
   'layer.makemake.core.pressureRange': '> 2 GPa',
   'layer.makemake.core.state': 'Yoğun kayaç',
   'layer.makemake.core.funFact': "Makemake'de benzer boyutlu Plüton'un aksine atmosfer tespit edilemedi — bilim insanlarını şaşırtıyor.",
+
+  'layer.charon.iceCrust.compositionShort': 'H₂O buzu, CO₂',
+  'layer.charon.iceCrust.compositionFull': 'Su buzu ve karbondioksit buzu',
+  'layer.charon.iceCrust.thickness': '20 – 40 km',
+  'layer.charon.iceCrust.temperatureRange': '−220 – −200 °C',
+  'layer.charon.iceCrust.pressureRange': '< 0,001 GPa',
+  'layer.charon.iceCrust.state': 'Katı (buz)',
+  'layer.charon.iceCrust.funFact': "Charon'un kabuğu, Plüton'dan taşınan kırmızımsı tholin birikintilerine sahiptir.",
+  'layer.charon.iceRockMix.compositionShort': 'H₂O buzu, kaya, organikler',
+  'layer.charon.iceRockMix.compositionFull': 'Su buzu ve silikat kayanın karışımı',
+  'layer.charon.iceRockMix.thickness': '200 – 250 km',
+  'layer.charon.iceRockMix.temperatureRange': '−200 – −100 °C',
+  'layer.charon.iceRockMix.pressureRange': '0,001 – 1 GPa',
+  'layer.charon.iceRockMix.state': 'Katı (buz-kaya)',
+  'layer.charon.iceRockMix.funFact': 'Buz-kaya sınırı ince bir yüzey altı sıvı tabkasına ev sahipliği yapıyor olabilir.',
+  'layer.charon.rockyCore.compositionShort': 'Silikatlar, demir',
+  'layer.charon.rockyCore.compositionFull': 'Demirli hidrate silikat kaya',
+  'layer.charon.rockyCore.thickness': '360 km yarıçap',
+  'layer.charon.rockyCore.temperatureRange': '−50 – 100 °C',
+  'layer.charon.rockyCore.pressureRange': '1 – 3 GPa',
+  'layer.charon.rockyCore.state': 'Katı (kaya)',
+  'layer.charon.rockyCore.funFact': 'Charon ve Plüton boyut olarak birbirine o kadar yakındır ki bazen çift cüce gezegen sistemi olarak anılırlar.',
 };

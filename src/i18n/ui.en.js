@@ -4,6 +4,7 @@
 export const ui_en = {
   // Brand
   'brand.tagline': 'Solar System Explorer',
+  'brand.subtitle': 'Where Ozan Meets the Cosmos',
 
   // Loading
   'loading.title': 'OzMos',
@@ -197,6 +198,7 @@ export const ui_en = {
 
   // Mission UI
   'nav.missions': 'Missions',
+  'nav.storm': 'Storm',
   'missions.title': 'NASA Missions',
   'missions.launch': 'Launch',
   'missions.status': 'Status',
@@ -240,6 +242,8 @@ export const ui_en = {
   // Tour
   'nav.tour': 'Tour',
   'aria.tour': 'Cinematic Tour',
+  'aria.missions': 'NASA Missions',
+  'aria.storm': 'Solar Storm Simulation',
 
   // Planet layer names
   'layer.mercury.crust': 'Crust',
@@ -1043,4 +1047,26 @@ export const ui_en = {
   'layer.makemake.core.pressureRange': '> 2 GPa',
   'layer.makemake.core.state': 'Dense rock',
   'layer.makemake.core.funFact': 'Makemake has no detected atmosphere, unlike similar-sized Pluto — puzzling scientists.',
+
+  'layer.charon.iceCrust.compositionShort': 'H₂O ice, CO₂',
+  'layer.charon.iceCrust.compositionFull': 'Water ice and carbon dioxide ice',
+  'layer.charon.iceCrust.thickness': '20 – 40 km',
+  'layer.charon.iceCrust.temperatureRange': '−220 – −200 °C',
+  'layer.charon.iceCrust.pressureRange': '< 0.001 GPa',
+  'layer.charon.iceCrust.state': 'Solid (ice)',
+  'layer.charon.iceCrust.funFact': "Charon's crust has reddish polar deposits of tholins transported from Pluto.",
+  'layer.charon.iceRockMix.compositionShort': 'H₂O ice, rock, organics',
+  'layer.charon.iceRockMix.compositionFull': 'Mixture of water ice and silicate rock',
+  'layer.charon.iceRockMix.thickness': '200 – 250 km',
+  'layer.charon.iceRockMix.temperatureRange': '−200 – −100 °C',
+  'layer.charon.iceRockMix.pressureRange': '0.001 – 1 GPa',
+  'layer.charon.iceRockMix.state': 'Solid (ice-rock)',
+  'layer.charon.iceRockMix.funFact': 'The ice-rock boundary may host a thin subsurface liquid layer.',
+  'layer.charon.rockyCore.compositionShort': 'Silicates, iron',
+  'layer.charon.rockyCore.compositionFull': 'Hydrated silicate rock with iron',
+  'layer.charon.rockyCore.thickness': '360 km radius',
+  'layer.charon.rockyCore.temperatureRange': '−50 – 100 °C',
+  'layer.charon.rockyCore.pressureRange': '1 – 3 GPa',
+  'layer.charon.rockyCore.state': 'Solid (rock)',
+  'layer.charon.rockyCore.funFact': 'Charon and Pluto are so similar in size they are sometimes called a double dwarf planet system.',
 };
