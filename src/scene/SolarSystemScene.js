@@ -394,7 +394,8 @@ export class SolarSystemScene {
       depthWrite: false,
     });
     this.corona = new THREE.Mesh(coronaGeo, coronaMat);
-    this.scene.add(this.corona);
+    // Corona haze removed — sun_8k.jpg texture provides realistic photosphere appearance
+    // this.scene.add(this.corona);
 
     // Corona shells removed — sun_8k.jpg texture provides realistic appearance
     const shellConfigs = [];
@@ -1046,6 +1047,7 @@ export class SolarSystemScene {
       const orbitLine = new THREE.Line(orbitGeo, orbitMat);
       orbitLine.computeLineDistances();
       orbitLine.rotation.x = THREE.MathUtils.degToRad(planetData.orbitInclination || 0);
+      orbitLine.visible = false; // hide dwarf planet dotted rings
       this.scene.add(orbitLine);
       this.orbitLines[key] = orbitLine;
     }

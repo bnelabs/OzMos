@@ -783,12 +783,9 @@ export class CrossSectionViewer {
     // ── Layer expansion lerp ──
     if (this._expandTarget && this._expandCurrent) {
       for (let i = 0; i < this._layerMeshes.length; i++) {
-        this._expandCurrent[i] += (this._expandTarget[i] - this._expandCurrent[i]) * 0.12;
-        this._layerMeshes[i].position.x = this._expandCurrent[i];
-        // Move the boundary ring with its layer
-        if (this._boundaryRings[i]) {
-          this._boundaryRings[i].position.x = 0.005 + this._expandCurrent[i];
-        }
+        this._expandCurrent[i] += (this._expandTarget[i] - this._expandCurrent[i]) * 0.1;
+        const s = 1.0 + this._expandCurrent[i];
+        this._layerMeshes[i].scale.setScalar(s);
       }
     }
 
@@ -1056,7 +1053,7 @@ export class CrossSectionViewer {
     // Expand the hovered layer outward along +X so it separates from the cut face
     if (this._expandTarget) {
       for (let i = 0; i < this._expandTarget.length; i++) {
-        this._expandTarget[i] = (entering && i === index) ? 0.22 : 0;
+        this._expandTarget[i] = (entering && i === index) ? 0.07 : 0;
       }
     }
   }

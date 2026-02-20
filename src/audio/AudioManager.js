@@ -11,18 +11,16 @@ const AUTO_KEY    = 'ozmos-music-auto';
 const LOCKED_KEY  = 'ozmos-music-locked'; // true when user has manually chosen a track
 
 const TRACK_PATHS = {
-  calm: '/audio/ambient.mp3',
-  epic: '/audio/epic.mp3',
-  contemplative: '/audio/contemplative.mp3',
-  landing: '/audio/contemplative.mp3',    // Cinematic / interstellar
-  navigation: '/audio/epic.mp3',          // Epic journey
+  calm:         '/audio/ambient.mp3',
+  epic:         '/audio/epic.mp3',
+  contemplative:'/audio/contemplative.mp3',
 };
 
 const CONTEXT_TRACKS = {
-  overview: 'landing',      // was 'calm'
-  planet: 'contemplative',  // unchanged
-  mission: 'navigation',    // was 'epic'
-  flyby: 'navigation',      // flyby mode
+  overview: 'calm',
+  planet:   'contemplative',
+  mission:  'epic',
+  flyby:    'epic',
 };
 
 class AudioManager {
@@ -40,7 +38,7 @@ class AudioManager {
     const storedVolume = storageGet(VOLUME_KEY);
     this._volume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
 
-    this._preferredTrack = storageGet(TRACK_KEY, ['calm', 'epic', 'contemplative', 'landing', 'navigation'], 'landing');
+    this._preferredTrack = storageGet(TRACK_KEY, ['calm', 'epic', 'contemplative'], 'calm');
     // Locked = user has manually picked a track, context switching should not override it
     this._userOverride = storageGet(LOCKED_KEY) === 'true';
 
@@ -65,16 +63,10 @@ class AudioManager {
       return;
     }
 
-    // Try to load the preferred track; fall back to existing tracks if file is missing
-    await this._loadTrack(this._preferredTrack);
-    if (this.tracks.size === 0) {
-      // Preferred file not available — try known fallbacks in order
-      for (const id of ['calm', 'epic', 'contemplative', 'navigation', 'landing']) {
-        if (id === this._preferredTrack) continue;
-        await this._loadTrack(id);
-        if (this.tracks.size > 0) break;
-      }
-    }
+    // Eagerly load all 3 tracks so switching is instant
+    await Promise.all(['calm', 'epic', 'contemplative'].map(id =>
+      this._loadTrack(id).catch(() => {})
+    ));
     this.loaded = this.tracks.size > 0;
 
     // Auto-play if user previously opted in (not muted)
