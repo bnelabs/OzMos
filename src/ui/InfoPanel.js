@@ -73,8 +73,11 @@ export function renderCompactPlanetInfo(key) {
   return `
     <div class="info-compact">
       <div class="info-compact-header">
-        <h1>${escapeHTML(data.name)}</h1>
-        <span class="subtitle">${escapeHTML(data.type)}</span>
+        <div class="info-planet-thumb" data-thumb-planet="${escapeHTML(key)}"></div>
+        <div>
+          <h1>${escapeHTML(data.name)}</h1>
+          <span class="subtitle">${escapeHTML(data.type)}</span>
+        </div>
       </div>
       <div class="info-compact-stats">${stats}</div>
       <div class="info-compact-actions">${cutawayBtn}${flybyBtn}</div>

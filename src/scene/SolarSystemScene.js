@@ -32,7 +32,7 @@ import {
   ringVertexShader, ringFragmentShader,
   cityLightsVertexShader, cityLightsFragmentShader,
 } from '../shaders/atmosphereShader.js';
-import { getPlanetHeliocentricAU, getCurrentDateStr, advanceDateStr } from './OrbitalMechanics.js';
+import { getPlanetHeliocentricAU, getCurrentDateStr, dateToJulian, julianToDateStr } from './OrbitalMechanics.js';
 import { AsteroidBelt } from './AsteroidBelt.js';
 import { ISSTracker } from './ISSTracker.js';
 import { DWARF_PLANETS, DWARF_PLANET_ORDER } from '../data/dwarfPlanets.js';
@@ -103,6 +103,7 @@ export class SolarSystemScene {
 
     // Real-time orbital mode
     this._simDate = getCurrentDateStr();
+    this._simJD = dateToJulian(this._simDate); // cached Julian date — avoids string roundtrip each frame
     this._daysPerSecond = 1; // 1 day per second at 1x speed
 
     // Dwarf planets
@@ -1750,7 +1751,8 @@ export class SolarSystemScene {
     // Advance simulation date and sync Keplerian positions
     if (!this._missionMode && speed > 0) {
       const daysAdvanced = Math.min(delta * speed * this._daysPerSecond, 30);
-      this._simDate = advanceDateStr(this._simDate, daysAdvanced);
+      this._simJD += daysAdvanced; // advance Julian date numerically — no string parse/format roundtrip
+      this._simDate = julianToDateStr(this._simJD);
       this.syncPlanetsToDate(this._simDate);
       this._syncDwarfPlanetsToDate(this._simDate);
       this._syncAsteroidsToDate(this._simDate);

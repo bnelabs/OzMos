@@ -44,6 +44,7 @@ export class SolarStormSimulation {
     this._shockwaveMesh = null;
     this._magnetospheres = [];
     this._fieldLines = [];
+    this._fieldLinesByPlanet = {}; // keyed by planet name for deferred reveal
     this._auroras = [];
     this._impactEffects = [];
     this._intervals = [];
@@ -189,8 +190,11 @@ export class SolarStormSimulation {
         blending: THREE.AdditiveBlending,
       });
       const tube = new THREE.Mesh(tubeGeo, tubeMat);
+      tube.visible = false; // hidden until CME arrives at this planet
       this._scene.add(tube);
       this._fieldLines.push(tube);
+      if (!this._fieldLinesByPlanet[key]) this._fieldLinesByPlanet[key] = [];
+      this._fieldLinesByPlanet[key].push(tube);
     }
   }
 
@@ -326,6 +330,13 @@ export class SolarStormSimulation {
   _scheduleAurora(key, pos, radius, delay, field) {
     const timer = setTimeout(() => {
       if (!this._active) return;
+
+      // Reveal pre-created field lines now that CME has arrived
+      if (this._fieldLinesByPlanet[key]) {
+        for (const line of this._fieldLinesByPlanet[key]) {
+          line.visible = true;
+        }
+      }
 
       // Create aurora curtain geometry at north and south poles
       const auroraRadius = radius * 0.85;
@@ -658,6 +669,7 @@ export class SolarStormSimulation {
       tube.material.dispose();
     }
     this._fieldLines = [];
+    this._fieldLinesByPlanet = {};
 
     for (const aurora of this._auroras) {
       if (aurora.mesh.parent) this._scene.remove(aurora.mesh);

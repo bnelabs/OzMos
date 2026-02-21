@@ -664,12 +664,14 @@ body.nav-sheet-open::after {
 }
 
 .thumb-dot {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--dot-color);
   background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 50%),
                     radial-gradient(circle at 65% 65%, rgba(0,0,0,0.4) 0%, transparent 50%);
+  background-size: cover;
+  background-position: center;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
   box-shadow: 0 0 6px 1px rgba(255,255,255,0.1),
               inset 0 -2px 4px rgba(0,0,0,0.3),
@@ -710,116 +712,74 @@ body.nav-sheet-open::after {
   }
 }
 
-/* ===== Per-Planet Realistic Thumbnails ===== */
+/* ===== Per-Planet Thumbnails =====
+   Real-texture canvas thumbnails are applied via JS (PlanetThumbnails.js).
+   CSS here provides: Sun glow animation, Saturn ring overlay, Neptune fallback colour,
+   and hover brightness — everything else comes from the canvas dataURLs. */
+
+/* Sun: keep CSS-animated glow — no photo texture needed */
 [data-planet="sun"] .thumb-dot {
-  background: radial-gradient(circle at 40% 40%, #fff 0%, #ffe066 20%, #ffaa00 50%, #cc6600 80%, #993300 100%) !important;
-  box-shadow: 0 0 8px 3px rgba(255, 170, 0, 0.5), inset 0 -2px 4px rgba(0,0,0,0.2);
+  background: radial-gradient(circle at 38% 38%, #fff5c0 0%, #ffcc00 22%, #ff8800 52%, #cc4400 80%, #882200 100%);
+  box-shadow: 0 0 10px 4px rgba(255, 160, 0, 0.55), inset 0 -2px 4px rgba(0,0,0,0.15);
   animation: sunPulse 3s ease-in-out infinite;
 }
 
 @keyframes sunPulse {
-  0%, 100% { box-shadow: 0 0 8px 3px rgba(255, 170, 0, 0.4), inset 0 -2px 4px rgba(0,0,0,0.2); }
-  50% { box-shadow: 0 0 14px 5px rgba(255, 170, 0, 0.6), inset 0 -2px 4px rgba(0,0,0,0.2); }
+  0%, 100% { box-shadow: 0 0 10px 4px rgba(255, 160, 0, 0.45); }
+  50%       { box-shadow: 0 0 18px 7px rgba(255, 160, 0, 0.70); }
 }
 
-[data-planet="mercury"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #b0a898 0%, #8c7e6d 40%, #6b5d4f 70%, #4a3f35 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 40%),
-                    radial-gradient(circle at 60% 55%, rgba(0,0,0,0.3) 0%, transparent 30%),
-                    radial-gradient(circle at 35% 35%, #b0a898 0%, #8c7e6d 40%, #6b5d4f 70%, #4a3f35 100%) !important;
-}
-
-[data-planet="venus"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #e8d8a0 0%, #c4a45a 35%, #b89040 60%, #8a6830 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 35%),
-                    radial-gradient(circle at 50% 50%, rgba(200,180,130,0.3) 0%, transparent 60%),
-                    radial-gradient(circle at 35% 35%, #e8d8a0 0%, #c4a45a 35%, #b89040 60%, #8a6830 100%) !important;
-}
-
-[data-planet="earth"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #6ab4e8 0%, #4a90d9 25%, #3a7bc8 45%, #2d6aa0 65%, #1a4870 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4) 0%, transparent 25%),
-                    radial-gradient(ellipse at 45% 40%, rgba(80,160,80,0.4) 0%, transparent 40%),
-                    radial-gradient(ellipse at 55% 55%, rgba(80,160,80,0.3) 0%, transparent 30%),
-                    radial-gradient(circle at 35% 35%, #6ab4e8 0%, #4a90d9 25%, #3a7bc8 45%, #1a4870 100%) !important;
-}
-
-[data-planet="mars"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #e87040 0%, #c1440e 40%, #a03008 65%, #701800 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 30%),
-                    radial-gradient(circle at 50% 15%, rgba(255,255,255,0.5) 0%, transparent 15%),
-                    radial-gradient(circle at 35% 35%, #e87040 0%, #c1440e 40%, #a03008 65%, #701800 100%) !important;
-}
-
-[data-planet="jupiter"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #e8c878 0%, #c88b3a 50%, #a06828 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 25%),
-                    linear-gradient(180deg,
-                      #d4a050 0%, #c89848 12%, #b08040 18%, #d4a860 24%,
-                      #c09050 30%, #a87040 38%, #c4a058 44%, #d8b870 50%,
-                      #c09848 56%, #a87840 62%, #c4a058 68%, #d0a850 76%,
-                      #b89048 84%, #a07838 100%) !important;
-}
-
+/* Saturn: CSS ring overlay sits on top of the real-texture sphere */
 [data-planet="saturn"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #e8d498 0%, #c5ab6e 50%, #a08850 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3) 0%, transparent 25%),
-                    linear-gradient(180deg,
-                      #d8c488 0%, #c8b478 20%, #b8a468 35%, #d0c080 50%,
-                      #c0b070 65%, #b0a060 80%, #c8b878 100%) !important;
   position: relative;
+  overflow: visible;
 }
-
 [data-planet="saturn"] .thumb-dot::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 140%;
-  height: 40%;
-  transform: translate(-50%, -50%) rotate(-20deg);
-  border: 1.5px solid rgba(200, 180, 120, 0.5);
+  width: 175%;
+  height: 52%;
+  transform: translate(-50%, -50%) rotate(-22deg);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(195,165,100,0.55) 10%,
+    rgba(220,195,140,0.80) 28%,
+    rgba(205,178,118,0.60) 44%,
+    rgba(180,152, 90,0.35) 50%,   /* Cassini Division */
+    rgba(205,178,118,0.60) 56%,
+    rgba(220,195,140,0.78) 72%,
+    rgba(195,165,100,0.52) 90%,
+    transparent 100%);
   border-radius: 50%;
   pointer-events: none;
+  z-index: 1;
 }
 
-[data-planet="uranus"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #a8dce8 0%, #72b5c4 40%, #5a98a8 70%, #3a7888 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 30%),
-                    linear-gradient(180deg, #80c8d8 0%, #72b5c4 30%, #68aab8 50%, #78bcc8 70%, #72b5c4 100%),
-                    radial-gradient(circle at 35% 35%, #a8dce8 0%, #72b5c4 40%, #5a98a8 70%, #3a7888 100%) !important;
-}
-
+/* Neptune: corrected cobalt-blue CSS fallback (replaces the old lavender-purple) */
 [data-planet="neptune"] .thumb-dot {
-  background: radial-gradient(circle at 35% 35%, #6478c8 0%, #3e54a3 40%, #2a3d88 70%, #1a2a68 100%) !important;
-  background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35) 0%, transparent 25%),
-                    linear-gradient(180deg, #5068b8 0%, #4058a8 25%, #3e54a3 50%, #4860b0 75%, #3a50a0 100%),
-                    radial-gradient(circle at 35% 35%, #6478c8 0%, #3e54a3 40%, #2a3d88 70%, #1a2a68 100%) !important;
+  background: radial-gradient(circle at 35% 32%,
+    #5878e0 0%, #2e50c8 32%, #1a3498 62%, #0c1e70 100%);
 }
 
-/* Per-planet hover enhancements */
-.planet-thumb:hover [data-planet] .thumb-dot,
+/* Per-planet hover brightness */
 .planet-thumb:hover .thumb-dot {
-  filter: brightness(1.15);
+  filter: brightness(1.18) saturate(1.1);
 }
 
-.planet-thumb.active [data-planet="sun"] .thumb-dot,
-.planet-thumb.active .thumb-dot {
-  animation: accentRing 2.5s ease-in-out infinite;
-}
-
-/* Increase dot size on desktop */
+/* Increase dot size on tablet and desktop */
 @media (min-width: 768px) {
   .thumb-dot {
-    width: 26px;
-    height: 26px;
+    width: 44px;
+    height: 44px;
   }
 }
 
 @media (min-width: 1024px) {
   .thumb-dot {
-    width: 28px;
-    height: 28px;
+    width: 52px;
+    height: 52px;
   }
 }
 
@@ -995,10 +955,22 @@ body.nav-sheet-open::after {
   gap: var(--space-3);
 }
 
+/* Planet thumbnail shown in the info panel compact header */
+.info-planet-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255,255,255,0.06);
+  box-shadow: 0 0 10px rgba(0,0,0,0.7), inset 0 0 2px rgba(255,255,255,0.12);
+}
+
 .info-compact-header {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .info-compact-header h1 {

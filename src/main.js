@@ -38,6 +38,7 @@ import { DWARF_PLANETS, DWARF_PLANET_ORDER } from './data/dwarfPlanets.js';
 import { ASTEROIDS, ASTEROID_ORDER } from './data/asteroids.js';
 import { MISSIONS } from './data/missions.js';
 import { startOnboarding, restartOnboarding } from './ui/Onboarding.js';
+import { generatePlanetThumbnails } from './ui/PlanetThumbnails.js';
 import { renderQuizMenu, renderQuizQuestion, renderQuizResult, renderQuizSummary } from './ui/QuizPanel.js';
 import { filterQuestions } from './data/quizQuestions.js';
 import { initLang, setLang, getLang, t, onLangChange } from './i18n/i18n.js';
@@ -186,6 +187,7 @@ let crossSectionViewer = null;
 let flybyMode = null;
 let solarStorm = null;
 let sfx = null;
+let _planetThumbnails = {}; // canvas dataURLs keyed by planet name
 
 // Quiz state
 let quizActive = false;
@@ -443,6 +445,12 @@ function startApp() {
           audioManager.setContext('overview');
         };
       }
+      // Generate real-texture planet thumbnails for the planet bar and info panel
+      generatePlanetThumbnails().then(thumbs => {
+        _planetThumbnails = thumbs;
+        applyPlanetBarThumbnails();
+      });
+
       setTimeout(() => {
         loadingScreen.classList.add('fade-out');
         setTimeout(() => {
@@ -963,6 +971,31 @@ function wireInfoPanelHandlers() {
   }
 }
 
+/** Apply canvas texture thumbnails to every planet bar dot that has one. */
+function applyPlanetBarThumbnails() {
+  for (const [key, dataURL] of Object.entries(_planetThumbnails)) {
+    const dot = document.querySelector(`[data-planet="${key}"] .thumb-dot`);
+    if (dot) {
+      dot.style.backgroundImage = `url(${dataURL})`;
+      dot.style.backgroundSize  = 'cover';
+      dot.style.backgroundPosition = 'center';
+    }
+  }
+}
+
+/** Apply thumbnail to a specific info-panel thumb element after rendering. */
+function applyInfoPanelThumbnail(key) {
+  const el = document.querySelector('.info-planet-thumb[data-thumb-planet]');
+  if (!el) return;
+  const thumbKey = el.dataset.thumbPlanet;
+  const dataURL  = _planetThumbnails[thumbKey];
+  if (dataURL) {
+    el.style.backgroundImage    = `url(${dataURL})`;
+    el.style.backgroundSize     = 'cover';
+    el.style.backgroundPosition = 'center';
+  }
+}
+
 function openInfoPanel(key) {
   disposeCutaway();
   currentPlanetKey = key;
@@ -970,6 +1003,7 @@ function openInfoPanel(key) {
 
   // Show compact view first (visual-first: 3D scene stays dominant)
   safeRender(infoContent, () => renderCompactPlanetInfo(key));
+  applyInfoPanelThumbnail(key);
   infoPanel.classList.remove('hidden', 'expanded');
   infoPanel.setAttribute('aria-hidden', 'false');
   comparePanel.classList.add('hidden');
