@@ -110,6 +110,7 @@ export const sunFragmentShader = `
   varying vec3 vWorldNormal;
   varying vec3 vViewDir;
   uniform float uTime;
+  uniform float uChromosphereStrength;
 
   ${NOISE_GLSL}
 
@@ -185,6 +186,13 @@ export const sunFragmentShader = `
     // Subtle chromospheric rim brightening (very thin bright edge)
     float chromoRim = pow(1.0 - cosTheta, 8.0) * 0.15;
     brightness += chromoRim;
+
+    // === Chromosphere: thin reddish-pink layer at the limb ===
+    // Visible as a narrow band between photosphere and corona
+    float chromoMask = smoothstep(0.08, 0.15, 1.0 - cosTheta);
+    chromoMask *= (1.0 - smoothstep(0.15, 0.35, 1.0 - cosTheta));
+    vec3 chromoColor = vec3(0.95, 0.35, 0.2);
+    color = mix(color, chromoColor, chromoMask * uChromosphereStrength * 0.4);
 
     gl_FragColor = vec4(color * brightness, 1.0);
   }

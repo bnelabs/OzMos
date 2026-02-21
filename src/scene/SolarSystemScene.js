@@ -175,6 +175,7 @@ export class SolarSystemScene {
 
     // Build scene
     this._createStarfield();
+    this._createMilkyWayLayer();
     this._createParticleStars();
     this.onProgress(30);
     this._createSun();
@@ -268,6 +269,67 @@ export class SolarSystemScene {
     });
     this.starfield = new THREE.Mesh(starGeo, starMat);
     this.scene.add(this.starfield);
+  }
+
+  _createMilkyWayLayer() {
+    const size = 2048;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size / 2;
+    const ctx = canvas.getContext('2d');
+
+    // Deep space black background
+    ctx.fillStyle = '#000008';
+    ctx.fillRect(0, 0, size, size / 2);
+
+    // Milky Way band: dense star cluster along equator
+    const bandCenterY = size / 4;
+    const bandWidth = size / 6;
+
+    // Background nebula glow
+    const grd = ctx.createLinearGradient(0, bandCenterY - bandWidth, 0, bandCenterY + bandWidth);
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(0.3, 'rgba(40,35,70,0.15)');
+    grd.addColorStop(0.5, 'rgba(60,50,90,0.25)');
+    grd.addColorStop(0.7, 'rgba(40,35,70,0.15)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, bandCenterY - bandWidth * 1.5, size, bandWidth * 3);
+
+    // Dense star field in band
+    for (let i = 0; i < 80000; i++) {
+      const x = Math.random() * size;
+      const bandBias = Math.random();
+      const y = bandCenterY + (Math.random() - 0.5) * bandWidth * 3 * Math.pow(bandBias, 0.4);
+      if (y < 0 || y > size / 2) continue;
+      const brightness = Math.random();
+      const sizePx = brightness > 0.97 ? 2 : 1;
+      const alpha = 0.2 + brightness * 0.7;
+      const r = Math.random();
+      let color;
+      if (r > 0.9) color = `rgba(180, 200, 255, ${alpha})`;
+      else if (r > 0.8) color = `rgba(255, 240, 200, ${alpha})`;
+      else color = `rgba(255, 255, 255, ${alpha})`;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, sizePx, sizePx);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+
+    const geo = new THREE.SphereGeometry(2000, 64, 32);
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.BackSide,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = Math.PI * 0.05;
+    this.scene.add(mesh);
+    this._milkyWayMesh = mesh;
+    this._milkyWayMat = mat;
   }
 
   _createParticleStars() {
@@ -374,6 +436,7 @@ export class SolarSystemScene {
         fragmentShader: sunFragmentShader,
         uniforms: {
           uTime: { value: 0 },
+          uChromosphereStrength: { value: 0.6 },
         },
       });
     }
@@ -1630,6 +1693,13 @@ export class SolarSystemScene {
     // Subtle starfield drift
     if (this.starfield) {
       this.starfield.rotation.y += 0.00002 * speed;
+    }
+
+    // Milky Way fade-in based on camera distance
+    if (this._milkyWayMat) {
+      const dist = this.camera.position.length();
+      const t = THREE.MathUtils.clamp((dist - 400) / 300, 0, 1);
+      this._milkyWayMat.opacity = t * 0.55;
     }
 
     // Particle stars — twinkling driven by shader uniform (GPU, zero CPU array writes)

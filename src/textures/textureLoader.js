@@ -1,47 +1,65 @@
 /**
  * Loads photo-realistic NASA textures for all planets.
  * Returns a map of texture keys to THREE.Texture objects.
- * Mobile devices load 2K textures; desktop loads higher resolution where available.
+ * Supports LOD: mobile gets 2K, desktop with good GPU gets 4K (if available).
  */
 import * as THREE from 'three';
 
-const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent));
+/** Detect device texture quality capability. */
+function getTextureQuality() {
+  if (typeof window === 'undefined') return 'medium';
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const hasGoodGPU = !mobile
+    && typeof navigator.hardwareConcurrency !== 'undefined'
+    && navigator.hardwareConcurrency >= 4;
 
-// Desktop: try higher-res first, fall back to 2K
-const TEXTURE_PATHS_DESKTOP = {
-  mercury: '/textures/mercury_2k.jpg',
-  venus: '/textures/venus_2k.jpg',
-  earth: '/textures/earth_2k.jpg',
+  if (mobile) return 'low';
+  if (hasGoodGPU) return 'high';
+  return 'medium';
+}
+
+export const TEXTURE_QUALITY = getTextureQuality();
+
+/** High-res 4K texture paths (must be downloaded separately from NASA). */
+export const HIGH_RES_TEXTURES = {
+  earth: '/textures/4k/earth_4k.jpg',
+  mars: '/textures/4k/mars_4k.jpg',
+  moon: '/textures/4k/moon_4k.jpg',
+  jupiter: '/textures/4k/jupiter_4k.jpg',
+};
+
+/**
+ * Get the appropriate texture path for a planet based on device quality.
+ * @param {string} planetName - Planet key (e.g. 'earth', 'mars')
+ * @param {boolean} forceLow - Force 2K resolution
+ * @returns {string} Texture path
+ */
+export function getTexturePath(planetName, forceLow = false) {
+  if (forceLow || TEXTURE_QUALITY === 'low') {
+    return `/textures/${planetName}_2k.jpg`;
+  }
+  if (TEXTURE_QUALITY === 'high' && HIGH_RES_TEXTURES[planetName]) {
+    return HIGH_RES_TEXTURES[planetName];
+  }
+  return `/textures/${planetName}_2k.jpg`;
+}
+
+// Build texture paths using LOD quality detection
+const TEXTURE_PATHS = {
+  mercury: getTexturePath('mercury'),
+  venus: getTexturePath('venus'),
+  earth: getTexturePath('earth'),
   earthClouds: '/textures/earth_clouds_2k.jpg',
-  mars: '/textures/mars_2k.jpg',
-  jupiter: '/textures/jupiter_2k.jpg',
-  saturn: '/textures/saturn_2k.jpg',
+  mars: getTexturePath('mars'),
+  jupiter: getTexturePath('jupiter'),
+  saturn: getTexturePath('saturn'),
   saturnRing: '/textures/saturn_ring.png',
-  uranus: '/textures/uranus_2k.jpg',
-  neptune: '/textures/neptune_2k.jpg',
-  moon: '/textures/moon_2k.jpg',
+  uranus: getTexturePath('uranus'),
+  neptune: getTexturePath('neptune'),
+  moon: getTexturePath('moon'),
   sun: '/textures/sun_8k.jpg',
   starmap: '/textures/starmap_2k.jpg',
 };
-
-// Mobile: always 2K (smaller textures)
-const TEXTURE_PATHS_MOBILE = {
-  mercury: '/textures/mercury_2k.jpg',
-  venus: '/textures/venus_2k.jpg',
-  earth: '/textures/earth_2k.jpg',
-  earthClouds: '/textures/earth_clouds_2k.jpg',
-  mars: '/textures/mars_2k.jpg',
-  jupiter: '/textures/jupiter_2k.jpg',
-  saturn: '/textures/saturn_2k.jpg',
-  saturnRing: '/textures/saturn_ring.png',
-  uranus: '/textures/uranus_2k.jpg',
-  neptune: '/textures/neptune_2k.jpg',
-  moon: '/textures/moon_2k.jpg',
-  sun: '/textures/sun_8k.jpg',
-  starmap: '/textures/starmap_2k.jpg',
-};
-
-const TEXTURE_PATHS = isMobile ? TEXTURE_PATHS_MOBILE : TEXTURE_PATHS_DESKTOP;
 
 /** Solid-color fallback canvas texture (1×1 pixel, neutral grey). */
 function makeFallbackTexture() {
