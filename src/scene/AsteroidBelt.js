@@ -18,7 +18,7 @@ export class AsteroidBelt {
     this._quality = isMobile ? 'low' : 'high';
   }
 
-  createMainBelt(innerRadius = 50, outerRadius = 58, count = 500) {
+  createMainBelt(innerRadius = 60, outerRadius = 85, count = 500) {
     if (this._quality === 'low') count = 180;
 
     this._mainBeltGroup = new THREE.Group();

@@ -25,7 +25,7 @@
 import { SolarSystemScene } from './scene/SolarSystemScene.js';
 import { FlybyMode } from './scene/FlybyMode.js';
 import { renderPlanetInfo, renderCompactPlanetInfo, renderMoonInfo, renderISSInfo } from './ui/InfoPanel.js';
-import { renderCompareTable, renderCompareCards } from './ui/ComparePanel.js';
+import { renderCompareTable, renderCompareCards, initCompareListeners } from './ui/ComparePanel.js';
 import { renderMissionList, renderMissionDetail, renderMissionHUD, renderWaypointCard } from './ui/MissionPanel.js';
 import { MissionRenderer } from './scene/MissionRenderer.js';
 import { CrossSectionViewer } from './ui/CrossSectionViewer.js';
@@ -313,6 +313,7 @@ function refreshOpenPanels() {
   if (!comparePanel.classList.contains('hidden')) {
     const isMobile = window.innerWidth <= 768;
     safeRender(compareContent, () => isMobile ? renderCompareCards() : renderCompareTable());
+    initCompareListeners();
   }
 
   // Re-render mission panel if open
@@ -1215,6 +1216,7 @@ btnCompare.addEventListener('click', () => {
   if (isHidden) {
     const isMobile = window.innerWidth <= 768;
     safeRender(compareContent, () => isMobile ? renderCompareCards() : renderCompareTable());
+    initCompareListeners();
     comparePanel.classList.remove('hidden');
     comparePanel.setAttribute('aria-hidden', 'false');
     infoPanel.classList.add('hidden');
@@ -1783,6 +1785,7 @@ if (btnStorm) {
       solarStorm.deactivate();
       solarStorm = null;
       btnStorm.classList.remove('active');
+      scene.setProminencesVisible(false);
       return;
     }
 
@@ -1800,6 +1803,7 @@ if (btnStorm) {
     );
     solarStorm.activate();
     btnStorm.classList.add('active');
+    scene.setProminencesVisible(true);
 
     // Go to overview for best view
     scene.goToOverview();

@@ -479,8 +479,17 @@ export class SolarSystemScene {
       });
 
       const points = new THREE.Points(geo, mat);
+      points.visible = false; // Hidden by default — shown only during solar storm
       this.scene.add(points);
       this.prominences.push({ mesh: points, ageSpeed: 0.02 + Math.random() * 0.03 });
+    }
+  }
+
+  /** Show or hide solar prominences (called when storm activates/deactivates). */
+  setProminencesVisible(visible) {
+    if (!this.prominences) return;
+    for (const prom of this.prominences) {
+      prom.mesh.visible = visible;
     }
   }
 
@@ -1060,7 +1069,9 @@ export class SolarSystemScene {
       if (!planet) continue;
       const posAU = getPlanetHeliocentricAU(key, dateStr);
       if (posAU.x === 0 && posAU.y === 0 && posAU.z === 0) continue;
-      planet.orbitGroup.rotation.y = Math.atan2(-posAU.y, posAU.x);
+      const newRotY = Math.atan2(-posAU.y, posAU.x);
+      if (!isFinite(newRotY)) continue;
+      planet.orbitGroup.rotation.y = newRotY;
     }
   }
 
@@ -1104,7 +1115,9 @@ export class SolarSystemScene {
       if (!asteroid) continue;
       const posAU = getPlanetHeliocentricAU(key, dateStr);
       if (posAU.x === 0 && posAU.y === 0 && posAU.z === 0) continue;
-      asteroid.orbitGroup.rotation.y = Math.atan2(-posAU.y, posAU.x);
+      const newRotY = Math.atan2(-posAU.y, posAU.x);
+      if (!isFinite(newRotY)) continue;
+      asteroid.orbitGroup.rotation.y = newRotY;
     }
   }
 
@@ -1360,7 +1373,9 @@ export class SolarSystemScene {
       // Scene: world_x = r*cos(θ), world_z = -r*sin(θ)
       // Keplerian: sceneX = posAU.x * scale, sceneZ = posAU.y * scale
       // So θ = atan2(-posAU.y, posAU.x)
-      planet.orbitGroup.rotation.y = Math.atan2(-posAU.y, posAU.x);
+      const newRotY = Math.atan2(-posAU.y, posAU.x);
+      if (!isFinite(newRotY)) continue; // NaN guard — hold previous valid rotation
+      planet.orbitGroup.rotation.y = newRotY;
     }
   }
 
@@ -1652,7 +1667,7 @@ export class SolarSystemScene {
 
     // Advance simulation date and sync Keplerian positions
     if (!this._missionMode && speed > 0) {
-      const daysAdvanced = delta * speed * this._daysPerSecond;
+      const daysAdvanced = Math.min(delta * speed * this._daysPerSecond, 30);
       this._simDate = advanceDateStr(this._simDate, daysAdvanced);
       this.syncPlanetsToDate(this._simDate);
       this._syncDwarfPlanetsToDate(this._simDate);

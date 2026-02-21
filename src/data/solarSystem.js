@@ -238,7 +238,7 @@ export const SOLAR_SYSTEM = {
     color: 0xC1440E,
     radius: 0.532,
     displayRadius: 1.1,
-    orbitRadius: 52,
+    orbitRadius: 55,
     orbitSpeed: 0.019,
     rotationSpeed: 0.00973,
     axialTilt: 25.19,
