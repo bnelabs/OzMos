@@ -1753,9 +1753,9 @@ export class SolarSystemScene {
       const daysAdvanced = Math.min(delta * speed * this._daysPerSecond, 30);
       this._simJD += daysAdvanced; // advance Julian date numerically — no string parse/format roundtrip
       this._simDate = julianToDateStr(this._simJD);
-      this.syncPlanetsToDate(this._simDate);
-      this._syncDwarfPlanetsToDate(this._simDate);
-      this._syncAsteroidsToDate(this._simDate);
+      this.syncPlanetsToDate(this._simJD);
+      this._syncDwarfPlanetsToDate(this._simJD);
+      this._syncAsteroidsToDate(this._simJD);
 
       // Fire date update callback
       if (this.onDateUpdate) this.onDateUpdate(this._simDate);

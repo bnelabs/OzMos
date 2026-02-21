@@ -259,7 +259,8 @@ export function getPlanetHeliocentricAU(planetKey, dateStr) {
   const elem = ELEMENTS[planetKey];
   if (!elem) return { x: 0, y: 0, z: 0 };
 
-  const jd = dateToJulian(dateStr);
+  // Accept either a JD number (for smooth sub-day interpolation) or a date string
+  const jd = typeof dateStr === 'number' ? dateStr : dateToJulian(dateStr);
   const T = julianToT(jd);
 
   // Compute current elements
