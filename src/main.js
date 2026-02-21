@@ -31,6 +31,7 @@ import { MissionRenderer } from './scene/MissionRenderer.js';
 import { CrossSectionViewer } from './ui/CrossSectionViewer.js';
 import { SolarStormSimulation } from './scene/SolarStormSimulation.js';
 import { audioManager } from './audio/AudioManager.js';
+import { SFXManager } from './audio/SFXManager.js';
 import { CinematicTour } from './scene/CinematicTour.js';
 import { PLANET_ORDER, SOLAR_SYSTEM } from './data/solarSystem.js';
 import { DWARF_PLANETS, DWARF_PLANET_ORDER } from './data/dwarfPlanets.js';
@@ -184,6 +185,7 @@ let waypointCardTimeout = null;
 let crossSectionViewer = null;
 let flybyMode = null;
 let solarStorm = null;
+let sfx = null;
 
 // Quiz state
 let quizActive = false;
@@ -377,6 +379,7 @@ function showLangPicker() {
     btn.addEventListener('click', () => {
       // Init AudioContext synchronously within user gesture
       audioManager.init();
+      if (!sfx && audioManager.getContext()) sfx = new SFXManager(audioManager.getContext());
       const lang = btn.dataset.lang;
       storageSet(LANG_STORAGE_KEY, lang);
       setLang(lang);
@@ -429,7 +432,7 @@ function startApp() {
           // Auto-open cross-section after camera settles
           setTimeout(() => {
             if (!cinematicTour?.isActive) return;
-            if (crossSectionViewer) crossSectionViewer.open(key);
+            if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
           }, 800);
         };
         cinematicTour.onPlanetLeave = () => disposeCutaway();
@@ -474,6 +477,7 @@ function startApp() {
 
   // Flyby mode events
   document.addEventListener('flyby-started', () => {
+    sfx?.playFlybyStart();
     closeInfoPanel();
   });
   document.addEventListener('flyby-ended', () => {
@@ -981,7 +985,7 @@ function wireInfoPanelHandlers() {
   if (cutawayBtn) {
     cutawayBtn.addEventListener('click', () => {
       const key = cutawayBtn.dataset.planet;
-      if (crossSectionViewer) crossSectionViewer.open(key);
+      if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
     });
   }
 
@@ -1098,7 +1102,7 @@ function wireCompactHandlers(key) {
   if (cutawayBtn) {
     cutawayBtn.addEventListener('click', () => {
       const key = cutawayBtn.dataset.planet;
-      if (crossSectionViewer) crossSectionViewer.open(key);
+      if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
     });
   }
 
@@ -1186,7 +1190,7 @@ function openMoonInfoPanel(planetKey, moonIndex) {
   if (cutawayBtn) {
     cutawayBtn.addEventListener('click', () => {
       const key = cutawayBtn.dataset.planet;
-      if (crossSectionViewer) crossSectionViewer.open(key);
+      if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
     });
   }
 }
@@ -1218,6 +1222,7 @@ planetThumbs.forEach(thumb => {
     if (thumb.closest('#dwarf-submenu') || thumb.closest('#asteroid-submenu')) return; // Handled by specific handlers
     const key = thumb.dataset.planet;
     if (!key) return;  // Skip toggle buttons without data-planet
+    sfx?.playPlanetSelect();
     openInfoPanel(key);
   });
 });
@@ -1438,6 +1443,7 @@ compareClose.addEventListener('click', closeComparePanel);
 
 btnSpeed.addEventListener('click', () => {
   speedIndex = (speedIndex + 1) % speeds.length;
+  sfx?.playSpeedChange();
   if (scene) scene.setAnimationSpeed(speeds[speedIndex]);
   const speedDisplay = t(speedKeys[speedIndex]);
   speedLabel.textContent = speedDisplay;
@@ -1941,7 +1947,7 @@ if (btnTour) {
         // Auto-open cross-section after camera settles
         setTimeout(() => {
           if (!cinematicTour?.isActive) return;
-          if (crossSectionViewer) crossSectionViewer.open(key);
+          if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
         }, 800);
       };
       cinematicTour.onPlanetLeave = () => disposeCutaway();
@@ -1957,6 +1963,7 @@ if (btnTour) {
     btnTour.classList.toggle('active', active);
 
     if (active) {
+      sfx?.playTourChime();
       // Trigger epic music for tour
       audioManager.setContext('mission');
     } else {
@@ -1975,6 +1982,7 @@ if (btnStorm) {
 
     if (solarStorm && solarStorm.isActive) {
       // If already active, either launch new CME or deactivate
+      sfx?.playStormEnd();
       solarStorm.deactivate();
       solarStorm = null;
       btnStorm.classList.remove('active');
@@ -1994,6 +2002,7 @@ if (btnStorm) {
       (key) => scene.getPlanetWorldPosition(key),
       planetDataLookup
     );
+    sfx?.playStormStart();
     solarStorm.activate();
     btnStorm.classList.add('active');
     scene.setProminencesVisible(true);
