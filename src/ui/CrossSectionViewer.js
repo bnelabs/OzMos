@@ -450,6 +450,9 @@ export class CrossSectionViewer {
     this._boundaryRings  = [];
     this._starfield      = null;
     this._coreLight      = null;
+    this._coreLightBlue  = null;
+    this._scanRing       = null;
+    this._coreParticles  = null;
 
     // Camera: nearly equatorial so the cut face (+X half-circle) fills the viewport.
     // Small +X offset keeps the exterior dome visible alongside the cut face.
@@ -668,7 +671,7 @@ export class CrossSectionViewer {
         mat.needsUpdate = true;
       }
 
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 64, 48), mat);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 96, 64), mat);
       this._layerMeshes.push(mesh);
     }
 
@@ -707,16 +710,58 @@ export class CrossSectionViewer {
       this._boundaryRings.push(ring);
     }
 
-    // ── Core glow light ──
-    const innerColor = new THREE.Color(layers[layers.length - 1].color);
-    this._coreLight  = new THREE.PointLight(innerColor, 0, 3.0, 1.8);
+    // ── Core glow lights (warm amber key + cool blue-white fill) ──
+    this._coreLight     = new THREE.PointLight(0xff8c00, 0, 3.0, 1.8); // amber
+    this._coreLightBlue = new THREE.PointLight(0xe0f0ff, 0, 2.0, 2.0); // blue-white
     this._scene.add(this._coreLight);
+    this._scene.add(this._coreLightBlue);
+
+    // ── Scan ring: horizontal torus that sweeps pole-to-pole before the cut ──
+    this._scanRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.12, 0.009, 8, 128),
+      new THREE.MeshBasicMaterial({
+        color: 0x00e8ff,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    this._scanRing.rotation.x = Math.PI / 2; // lie flat (horizontal ring)
+    this._scanRing.position.y = 1.3;          // start above the sphere
+    this._scene.add(this._scanRing);
+
+    // ── Core particle sparks ──
+    const pCount = 70;
+    const pPos   = new Float32Array(pCount * 3);
+    const pCol   = new Float32Array(pCount * 3);
+    const innerR = (layers[layers.length - 1].r / layers[0].r) * 0.48;
+    for (let i = 0; i < pCount; i++) {
+      const r     = Math.random() * innerR;
+      const theta = Math.random() * Math.PI * 2;
+      const phi   = Math.acos(2 * Math.random() - 1);
+      pPos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+      pPos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+      pPos[i*3+2] = r * Math.cos(phi);
+      const hot   = Math.random();
+      pCol[i*3]   = 1.0;
+      pCol[i*3+1] = 0.3 + hot * 0.7;
+      pCol[i*3+2] = hot * 0.25;
+    }
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    pGeo.setAttribute('color',    new THREE.BufferAttribute(pCol, 3));
+    this._coreParticles = new THREE.Points(pGeo, new THREE.PointsMaterial({
+      size: 0.022, vertexColors: true, transparent: true,
+      opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
 
     // ── Sphere group (for scale-in animation) ──
     this._sphereGroup = new THREE.Group();
     for (const m of [...this._layerMeshes, ...this._faceMeshes, ...this._boundaryRings]) {
       this._sphereGroup.add(m);
     }
+    this._sphereGroup.add(this._coreParticles);
     this._sphereGroup.scale.setScalar(0);
     this._scene.add(this._sphereGroup);
   }
@@ -731,15 +776,28 @@ export class CrossSectionViewer {
     const delta   = Math.min((now - this._lastFrameTime) * 0.001, 0.05);
     this._lastFrameTime = now;
 
+    // ── Phase 0: scan ring sweeps top → bottom (0 → 0.9 s) ──
+    if (this._scanRing) {
+      if (elapsed < 1.0) {
+        const scanT    = Math.min(elapsed / 0.9, 1);
+        const scanEase = this._easeOutCubic(scanT);
+        this._scanRing.position.y = 1.3 - scanEase * 2.6; // +1.3 → -1.3
+        const fadeIn  = scanT < 0.08 ? scanT / 0.08 : 1;
+        const fadeOut = scanT > 0.82 ? (1 - scanT) / 0.18 : 1;
+        this._scanRing.material.opacity = Math.min(fadeIn, fadeOut) * 0.9;
+      } else {
+        this._scanRing.material.opacity = 0;
+      }
+    }
+
     // ── Phase 1: sphere scales in (0 → 0.4 s), ease-out-back overshoot ──
     const scaleT = Math.min(Math.max(elapsed / 0.4, 0), 1);
     if (this._sphereGroup) {
       this._sphereGroup.scale.setScalar(this._easeOutBack(scaleT));
     }
 
-    // ── Phase 2: clip sweep (0.4 → 1.8 s) ──
-    // Clip constant 1.5 → 0: dramatic 1.4 s blade revealing the cross-section face.
-    const cutT      = Math.min(Math.max((elapsed - 0.4) / 1.4, 0), 1);
+    // ── Phase 2: clip sweep (0.9 → 2.3 s) — delayed to follow scan ring ──
+    const cutT      = Math.min(Math.max((elapsed - 0.9) / 1.4, 0), 1);
     const clipConst = 1.5 * (1 - this._easeOutCubic(cutT));
     if (this._clipPlane1) this._clipPlane1.constant = clipConst;
 
@@ -754,7 +812,7 @@ export class CrossSectionViewer {
         const base       = mat.userData.baseEmissive;
         if (postReveal >= 0 && postReveal < 0.25) {
           const flashT = postReveal / 0.25;
-          const boost  = 5.0 * Math.sin(flashT * Math.PI);
+          const boost  = 6.0 * Math.sin(flashT * Math.PI);
           mat.emissive = base.clone().multiplyScalar(1 + boost);
         } else {
           mat.emissive = base.clone();
@@ -763,32 +821,46 @@ export class CrossSectionViewer {
       }
     }
 
-    // ── Phase 3: sidebar rows stagger in during the clip sweep ──
+    // ── Phase 3: sidebar rows stagger in (1.8 s+) ──
     for (let i = 0; i < this._rowEls.length; i++) {
-      if (elapsed >= 1.2 + i * 0.12) {
+      if (elapsed >= 1.8 + i * 0.12) {
         this._rowEls[i].classList.add('visible');
       }
     }
 
-    // ── Core light: fades in with cut, pulses gently after settled ──
+    // ── Core lights: fade in with cut, pulse after settled ──
     if (this._coreLight) {
-      const base  = cutT * 1.6;
-      const pulse = elapsed > 2.0 ? Math.sin(elapsed * 1.2) * 0.35 : 0;
+      const base  = cutT * 2.0;
+      const pulse = elapsed > 2.5 ? Math.sin(elapsed * 1.5) * 0.5 : 0;
       this._coreLight.intensity = base + pulse;
     }
+    if (this._coreLightBlue) {
+      const base  = cutT * 0.8;
+      const pulse = elapsed > 2.5 ? Math.sin(elapsed * 0.9 + Math.PI) * 0.2 : 0;
+      this._coreLightBlue.intensity = base + pulse;
+    }
 
-    // ── Camera: zoom in (0–2.0 s) then slow orbit around Y axis (2.0 s+) ──
-    // Nearly equatorial start/end position keeps the cut face visible throughout.
+    // ── Core particles: appear after cut settles, gently rotate ──
+    if (this._coreParticles) {
+      if (elapsed > 2.5) {
+        const pT = Math.min((elapsed - 2.5) / 0.6, 1);
+        this._coreParticles.material.opacity = pT * (0.45 + 0.25 * Math.sin(elapsed * 2.3));
+        this._coreParticles.rotation.y += delta * 0.28;
+        this._coreParticles.rotation.x += delta * 0.12;
+      }
+    }
+
+    // ── Camera: zoom in (0–2.8 s) then slow cinematic orbit (2.8 s+) ──
     if (this._camera) {
-      if (elapsed < 2.0) {
-        const camT = this._easeOutCubic(Math.min(elapsed / 2.0, 1.0));
+      if (elapsed < 2.8) {
+        const camT = this._easeOutCubic(Math.min(elapsed / 2.8, 1.0));
         this._camera.position.lerpVectors(this._camStart, this._camEnd, camT);
         this._camera.lookAt(0, 0, 0);
       } else {
-        // Slow orbit around Y axis, always looking at origin
+        // Slow cinematic orbit (0.08 rad/s — was 0.15)
         const r          = Math.sqrt(this._camEnd.x ** 2 + this._camEnd.z ** 2);
         const startAngle = Math.atan2(this._camEnd.x, this._camEnd.z);
-        const angle      = startAngle + (elapsed - 2.0) * 0.15;
+        const angle      = startAngle + (elapsed - 2.8) * 0.08;
         this._camera.position.x = r * Math.sin(angle);
         this._camera.position.z = r * Math.cos(angle);
         this._camera.position.y = this._camEnd.y;
@@ -797,7 +869,7 @@ export class CrossSectionViewer {
     }
 
     // ── Build color dots after zoom settles ──
-    if (this._colorDots.length === 0 && elapsed > 2.8 && this._currentLayers) {
+    if (this._colorDots.length === 0 && elapsed > 3.4 && this._currentLayers) {
       this._buildColorDots();
     }
 
@@ -975,15 +1047,15 @@ export class CrossSectionViewer {
       name.className = 'cs-layer-name';
       name.textContent = t(layer.key);
 
-      // Build meta line: temperature + composition + thickness
-      const metaParts = [];
-      if (layer.temperatureRange) metaParts.push(t(layer.temperatureRange));
-      if (layer.compositionShort) metaParts.push(t(layer.compositionShort));
-      if (layer.thickness) metaParts.push(t(layer.thickness));
-
+      // Meta line: show the interesting funFact (truncated), or fall back to temp
       const meta = document.createElement('div');
-      meta.className = 'cs-layer-meta';
-      meta.textContent = metaParts.join(' \u00B7 '); // joined with middle dot
+      meta.className = 'cs-layer-meta cs-layer-funfact-preview';
+      if (layer.funFact) {
+        const ff = t(layer.funFact);
+        meta.textContent = ff.length > 90 ? ff.slice(0, 87) + '\u2026' : ff;
+      } else if (layer.temperatureRange) {
+        meta.textContent = t(layer.temperatureRange);
+      }
 
       info.append(name, meta);
       card.append(bar, info);
@@ -1010,11 +1082,12 @@ export class CrossSectionViewer {
       const metaEl = card.querySelector('.cs-layer-meta');
       if (nameEl) nameEl.textContent = t(layer.key);
       if (metaEl) {
-        const parts = [];
-        if (layer.temperatureRange) parts.push(t(layer.temperatureRange));
-        if (layer.compositionShort) parts.push(t(layer.compositionShort));
-        if (layer.thickness) parts.push(t(layer.thickness));
-        metaEl.textContent = parts.join(' \u00B7 ');
+        if (layer.funFact) {
+          const ff = t(layer.funFact);
+          metaEl.textContent = ff.length > 90 ? ff.slice(0, 87) + '\u2026' : ff;
+        } else if (layer.temperatureRange) {
+          metaEl.textContent = t(layer.temperatureRange);
+        }
       }
     });
     if (this._activeLayerIndex >= 0 && this._currentLayers[this._activeLayerIndex]) {
@@ -1111,14 +1184,16 @@ export class CrossSectionViewer {
   _showDetailPanel(layer) {
     if (!this._detailPanel) return;
 
+    // Data rows: thickness, temp, pressure, state — skip dry composition as headline
     const rows = [];
+    if (layer.thickness)        rows.push({ label: t('cs.thickness'),    value: t(layer.thickness) });
+    if (layer.temperatureRange) rows.push({ label: t('cs.temperature'), value: t(layer.temperatureRange) });
+    if (layer.pressureRange)    rows.push({ label: t('cs.pressure'),     value: t(layer.pressureRange) });
+    if (layer.state)            rows.push({ label: t('cs.state'),        value: t(layer.state) });
+    // Composition goes last — useful reference but not the headline
     if (layer.compositionFull || layer.compositionShort) {
       rows.push({ label: t('cs.composition'), value: t(layer.compositionFull || layer.compositionShort) });
     }
-    if (layer.thickness)       rows.push({ label: t('cs.thickness'),    value: t(layer.thickness) });
-    if (layer.temperatureRange) rows.push({ label: t('cs.temperature'), value: t(layer.temperatureRange) });
-    if (layer.pressureRange)   rows.push({ label: t('cs.pressure'),     value: t(layer.pressureRange) });
-    if (layer.state)           rows.push({ label: t('cs.state'),        value: t(layer.state) });
 
     let html = `
       <div class="cs-detail-header">
@@ -1130,19 +1205,20 @@ export class CrossSectionViewer {
                 aria-label="${escapeHTML(t('cs.close') || 'Close')}">&times;</button>
       </div>`;
 
+    // ★ Lead with the interesting fact — prominently displayed
+    if (layer.funFact) {
+      html += `
+        <div class="cs-detail-funfact-lead">
+          <div class="cs-detail-funfact-star">★</div>
+          <div class="cs-detail-funfact-text">${escapeHTML(t(layer.funFact))}</div>
+        </div>`;
+    }
+
     html += rows.map(r => `
       <div class="cs-detail-row">
         <div class="cs-detail-label">${escapeHTML(r.label)}</div>
         <div class="cs-detail-value">${escapeHTML(r.value)}</div>
       </div>`).join('');
-
-    if (layer.funFact) {
-      html += `
-        <div class="cs-detail-funfact">
-          <div class="cs-detail-label">${escapeHTML(t('cs.funFact'))}</div>
-          <div class="cs-detail-value">${escapeHTML(t(layer.funFact))}</div>
-        </div>`;
-    }
 
     this._detailPanel.innerHTML = html;
     this._detailPanel.classList.remove('hidden');
@@ -1249,6 +1325,19 @@ export class CrossSectionViewer {
 
     if (this._coreLight?.parent) this._coreLight.parent.remove(this._coreLight);
     this._coreLight = null;
+    if (this._coreLightBlue?.parent) this._coreLightBlue.parent.remove(this._coreLightBlue);
+    this._coreLightBlue = null;
+
+    if (this._scanRing) {
+      this._scanRing.geometry?.dispose();
+      this._scanRing.material?.dispose();
+      this._scanRing = null;
+    }
+    if (this._coreParticles) {
+      this._coreParticles.geometry?.dispose();
+      this._coreParticles.material?.dispose();
+      this._coreParticles = null;
+    }
 
     if (this._renderer) { this._renderer.dispose(); this._renderer = null; }
 

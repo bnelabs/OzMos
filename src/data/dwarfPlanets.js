@@ -14,7 +14,7 @@ export const DWARF_PLANETS = {
     color: 0x8A8A7A,
     radius: 0.074,
     displayRadius: 0.6,
-    orbitRadius: 54,
+    orbitRadius: 72,
     orbitSpeed: 0.017,
     rotationSpeed: 0.025,
     axialTilt: 4.0,

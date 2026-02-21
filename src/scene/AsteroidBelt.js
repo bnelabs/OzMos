@@ -151,7 +151,7 @@ export class AsteroidBelt {
     }
   }
 
-  createKuiperBelt(innerRadius = 140, outerRadius = 180, count = 40) {
+  createKuiperBelt(innerRadius = 230, outerRadius = 285, count = 40) {
     // Real Kuiper belt is vastly sparser than the asteroid belt — just a thin distant scatter.
     if (this._quality === 'low') count = 18;
     this.kuiperBelt = this._createPointsBelt(innerRadius, outerRadius, count, 5.0, 'kuiper');
