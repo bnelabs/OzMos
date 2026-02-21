@@ -1236,11 +1236,12 @@ export class SolarSystemScene {
 
     this.startCameraPos.copy(this.camera.position);
     this.startLookAt.copy(this.controls.target);
-    this.targetCameraPos = new THREE.Vector3(
-      worldPos.x + distance * 0.7,
-      worldPos.y + distance * 0.4,
-      worldPos.z + distance * 0.7
-    );
+    // Position camera on the sun-lit side: offset from planet in the planet→Sun direction
+    const sunToplanet = worldPos.clone().normalize();
+    const litSide = sunToplanet.clone().negate(); // points from planet toward Sun (lit face)
+    litSide.y += 0.35;                            // add elevation for a better angle
+    litSide.normalize();
+    this.targetCameraPos = worldPos.clone().addScaledVector(litSide, -distance);
     this.targetLookAt = worldPos.clone();
 
     // Slower cinematic transition duration

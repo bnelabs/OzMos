@@ -1,8 +1,10 @@
 /**
  * AudioManager — multi-track music system with crossfade and context-aware switching.
  * Uses Web Audio API with per-track gain nodes and a master gain.
+ * Supports both MP3 file-based tracks and procedurally synthesised tracks.
  */
 import { storageGet, storageSet, storageRemove } from '../utils/storage.js';
+import { createProceduralTrack, PROCEDURAL_TRACK_IDS } from './ProceduralTracks.js';
 
 const STORAGE_KEY = 'ozmos-music-muted';
 const VOLUME_KEY  = 'ozmos-music-volume';
@@ -10,17 +12,28 @@ const TRACK_KEY   = 'ozmos-music-track';
 const AUTO_KEY    = 'ozmos-music-auto';
 const LOCKED_KEY  = 'ozmos-music-locked'; // true when user has manually chosen a track
 
+// null path = procedurally generated (no file fetch)
 const TRACK_PATHS = {
   calm:         '/audio/ambient.mp3',
   epic:         '/audio/epic.mp3',
   contemplative:'/audio/contemplative.mp3',
+  deepspace:    null,
+  solarwind:    null,
+  pulsars:      null,
+  nebula:       null,
+  journey:      null,
 };
 
+const ALL_TRACK_IDS = Object.keys(TRACK_PATHS);
+
 const CONTEXT_TRACKS = {
-  overview: 'calm',
-  planet:   'contemplative',
-  mission:  'epic',
-  flyby:    'epic',
+  overview:  'calm',
+  planet:    'contemplative',
+  mission:   'epic',
+  flyby:     'epic',
+  sun:       'solarwind',
+  asteroid:  'deepspace',
+  dwarf:     'nebula',
 };
 
 class AudioManager {
@@ -38,7 +51,7 @@ class AudioManager {
     const storedVolume = storageGet(VOLUME_KEY);
     this._volume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
 
-    this._preferredTrack = storageGet(TRACK_KEY, ['calm', 'epic', 'contemplative'], 'calm');
+    this._preferredTrack = storageGet(TRACK_KEY, ALL_TRACK_IDS, 'calm');
     // Locked = user has manually picked a track, context switching should not override it
     this._userOverride = storageGet(LOCKED_KEY) === 'true';
 
@@ -63,8 +76,8 @@ class AudioManager {
       return;
     }
 
-    // Eagerly load all 3 tracks so switching is instant
-    await Promise.all(['calm', 'epic', 'contemplative'].map(id =>
+    // Eagerly load all tracks (MP3 and procedural) so switching is instant
+    await Promise.all(ALL_TRACK_IDS.map(id =>
       this._loadTrack(id).catch(() => {})
     ));
     this.loaded = this.tracks.size > 0;
@@ -86,7 +99,19 @@ class AudioManager {
   async _loadTrack(trackId) {
     if (this.tracks.has(trackId)) return; // already loaded
     const path = TRACK_PATHS[trackId];
-    if (!path || !this.ctx) return;
+    if (!this.ctx) return;
+
+    // null path = procedural synthesis — no file needed
+    if (path === null) {
+      if (!PROCEDURAL_TRACK_IDS.includes(trackId)) return;
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(this.masterGain);
+      this.tracks.set(trackId, { buffer: null, gain, source: null, procedural: true });
+      return;
+    }
+
+    if (!path) return;
     try {
       const response = await fetch(path);
       if (!response.ok) return;
@@ -103,12 +128,21 @@ class AudioManager {
 
   _startSource(trackId) {
     const track = this.tracks.get(trackId);
-    if (!track || !track.buffer) return;
+    if (!track) return;
 
     // Stop existing source for this track
     if (track.source) {
       try { track.source.stop(); } catch {}
+      track.source = null;
     }
+
+    if (track.procedural) {
+      // Procedural track: generate a new synthesis graph
+      track.source = createProceduralTrack(trackId, this.ctx, track.gain);
+      return;
+    }
+
+    if (!track.buffer) return;
     track.source = this.ctx.createBufferSource();
     track.source.buffer = track.buffer;
     track.source.loop = true;
