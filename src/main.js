@@ -719,6 +719,7 @@ const DEDICATION_KEY = 'ozmos-dedication-seen';
 
 let dedicationAudio = null;
 let _countdownCancelled = false;
+let _countdownAudio = null;
 
 async function runLaunchCountdown() {
   const el = document.getElementById('launch-countdown');
@@ -736,6 +737,21 @@ async function runLaunchCountdown() {
   _countdownCancelled = false;
   el.classList.add('active');
 
+  // Play NASA countdown audio
+  try {
+    _countdownAudio = new Audio('/audio/countdown.mp3');
+    _countdownAudio.volume = 0.7;
+    _countdownAudio.play().catch(() => {});
+  } catch (e) { _countdownAudio = null; }
+
+  // Play NASA countdown audio
+  let countdownAudio = null;
+  try {
+    countdownAudio = new Audio('/audio/countdown.mp3');
+    countdownAudio.volume = 0.75;
+    countdownAudio.play().catch(() => {});
+  } catch (e) { /* ignore if audio fails */ }
+
   for (const step of steps) {
     if (_countdownCancelled) break;
     numEl.textContent = step.num;
@@ -747,16 +763,22 @@ async function runLaunchCountdown() {
   }
 
   if (_countdownCancelled) {
+    if (countdownAudio) { countdownAudio.pause(); countdownAudio.currentTime = 0; }
     el.classList.remove('active');
     return;
   }
 
   // Brief pause at "LIFTOFF" then fade out
   await new Promise(r => setTimeout(r, 600));
-  if (_countdownCancelled) { el.classList.remove('active'); return; }
+  if (_countdownCancelled) {
+    if (countdownAudio) { countdownAudio.pause(); countdownAudio.currentTime = 0; }
+    el.classList.remove('active');
+    return;
+  }
   el.style.transition = 'opacity 0.8s ease';
   el.style.opacity = '0';
   await new Promise(r => setTimeout(r, 900));
+  if (countdownAudio) { countdownAudio.pause(); countdownAudio.currentTime = 0; }
   el.classList.remove('active');
   el.style.opacity = '';
 }
