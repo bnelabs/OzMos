@@ -109,8 +109,8 @@ export const DWARF_PLANETS = {
       {
         name: 'Charon',
         color: '#8A8278',
-        radius: 0.095,
-        distance: 3.0,
+        radius: 0.045,
+        distance: 3.8,
         speed: 0.025,
         orbitalPeriod: '6.39 days',
         diameter: '1,212 km',

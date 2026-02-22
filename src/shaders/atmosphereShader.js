@@ -33,9 +33,9 @@ export const atmosphereFragmentShader = `
 
     vec3 baseColor = uColor;
     // Shift toward blue at high scatter (limb), toward red at low scatter (horizon effect)
-    float blueShift = scatter * uThickness * 0.3;
-    float redShift = (1.0 - scatter) * 0.15;
-    vec3 scatteredColor = baseColor + vec3(-redShift * 0.5, 0.0, blueShift);
+    float blueShift = scatter * uThickness * 0.06;
+    float redShift = (1.0 - scatter) * 0.04;
+    vec3 scatteredColor = baseColor + vec3(-redShift * 0.3, 0.0, blueShift);
     scatteredColor = clamp(scatteredColor, 0.0, 1.0);
 
     float glow = scatter * uIntensity;

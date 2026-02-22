@@ -431,11 +431,11 @@ function startApp() {
         cinematicTour = new CinematicTour(scene);
         cinematicTour.onPlanetVisit = (key) => {
           openInfoPanel(key);
-          // Auto-open cross-section after camera settles
+          // Auto-open cross-section well after camera settles and info panel is readable
           setTimeout(() => {
             if (!cinematicTour?.isActive) return;
             if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
-          }, 800);
+          }, 3500);
         };
         cinematicTour.onPlanetLeave = () => disposeCutaway();
         cinematicTour.onTourEnd = () => {
@@ -2410,8 +2410,8 @@ window.addEventListener('hashchange', () => {
 
   window.addEventListener('offline', showOfflineToast);
   window.addEventListener('online', hideOfflineToast);
-
-  if (!navigator.onLine) showOfflineToast();
+  // navigator.onLine is unreliable on mobile (false positives on poor signal / iOS quirks)
+  // — only show the toast when the browser fires a real offline event, not on initial load.
 })();
 
 // ==================== Console welcome ====================

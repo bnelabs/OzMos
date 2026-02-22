@@ -897,14 +897,49 @@ export class SolarSystemScene {
         depthWrite: false,
         opacity: 0.85,
       });
-    } else {
-      // Simpler rings for Uranus/Neptune
+    } else if (key === 'neptune') {
+      // Neptune has five narrow, faint rings — Adams (brightest), Le Verrier, Galle, Lassell, Arago
+      const nepCanvas = document.createElement('canvas');
+      nepCanvas.width = 512; nepCanvas.height = 1;
+      const nepCtx = nepCanvas.getContext('2d');
+      // Transparent base
+      nepCtx.clearRect(0, 0, 512, 1);
+      // Ring bands as fractions of total ring width (inner→outer: Galle, Le Verrier, Lassell, Arago, Adams)
+      const bands = [
+        { pos: 0.08, w: 0.06, a: 0.12 }, // Galle — faint, wide
+        { pos: 0.38, w: 0.025, a: 0.38 }, // Le Verrier — narrow, moderate
+        { pos: 0.48, w: 0.08, a: 0.08 },  // Lassell — very faint, wide
+        { pos: 0.58, w: 0.02, a: 0.22 },  // Arago — narrow
+        { pos: 0.88, w: 0.03, a: 0.72 },  // Adams — brightest, narrow
+      ];
+      for (const b of bands) {
+        const start = Math.round((b.pos - b.w / 2) * 512);
+        const end   = Math.round((b.pos + b.w / 2) * 512);
+        const grad  = nepCtx.createLinearGradient(start, 0, end, 0);
+        grad.addColorStop(0, `rgba(100,140,200,0)`);
+        grad.addColorStop(0.3, `rgba(110,150,210,${b.a})`);
+        grad.addColorStop(0.7, `rgba(110,150,210,${b.a})`);
+        grad.addColorStop(1, `rgba(100,140,200,0)`);
+        nepCtx.fillStyle = grad;
+        nepCtx.fillRect(start, 0, end - start, 1);
+      }
+      const nepTexture = new THREE.CanvasTexture(nepCanvas);
+      nepTexture.needsUpdate = true;
       ringMat = new THREE.MeshBasicMaterial({
-        color: key === 'uranus' ? 0x667788 : 0x445566,
+        map: nepTexture,
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
-        opacity: 0.15,
+        opacity: 0.9,
+      });
+    } else {
+      // Uranus — simple faint ring
+      ringMat = new THREE.MeshBasicMaterial({
+        color: 0x667788,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        opacity: 0.12,
       });
     }
 
@@ -1236,11 +1271,17 @@ export class SolarSystemScene {
 
     this.startCameraPos.copy(this.camera.position);
     this.startLookAt.copy(this.controls.target);
-    // Position camera on the sun-lit side: offset from planet in the planet→Sun direction
-    const sunToplanet = worldPos.clone().normalize();
-    const litSide = sunToplanet.clone().negate(); // points from planet toward Sun (lit face)
-    litSide.y += 0.35;                            // add elevation for a better angle
-    litSide.normalize();
+    // Special case: Sun is at origin — normalize() on a zero vector returns NaN, placing
+    // the camera directly below. Use a fixed approach angle instead.
+    let litSide;
+    if (key === 'sun') {
+      litSide = new THREE.Vector3(0.6, 0.3, 0.8).normalize();
+    } else {
+      const sunToplanet = worldPos.clone().normalize();
+      litSide = sunToplanet.clone().negate();
+      litSide.y += 0.35;
+      litSide.normalize();
+    }
     this.targetCameraPos = worldPos.clone().addScaledVector(litSide, -distance);
     this.targetLookAt = worldPos.clone();
 

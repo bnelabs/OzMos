@@ -844,7 +844,7 @@ body.nav-sheet-open::after {
 /* ===== Info Panel — Mobile: compact bottom sheet ===== */
 #info-panel {
   position: fixed;
-  bottom: 80px;
+  bottom: 96px;
   left: 0;
   right: 0;
   z-index: 200;
@@ -1015,6 +1015,10 @@ body.nav-sheet-open::after {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 /* UX-4: Pulse glow animation for first-open expand button */
@@ -2018,6 +2022,10 @@ kbd {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .help-close {
   background: none;

@@ -204,8 +204,10 @@ export class MissionRenderer {
       cameraOffset.add(binormal.multiplyScalar(rollAmount * 2));
 
       const targetCamPos = point.clone().add(cameraOffset);
-      this._followCamera.position.lerp(targetCamPos, 0.06);
-      this._followControls.target.lerp(point, 0.08);
+      const lerpPos = Math.min(0.06 * Math.max(1, this.playbackSpeed), 0.55);
+      const lerpTgt = Math.min(0.08 * Math.max(1, this.playbackSpeed), 0.65);
+      this._followCamera.position.lerp(targetCamPos, lerpPos);
+      this._followControls.target.lerp(point, lerpTgt);
     }
 
     // Update timeline strip active phase

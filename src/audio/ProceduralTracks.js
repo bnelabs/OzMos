@@ -133,19 +133,19 @@ export function createPulsarField(ctx, outGain) {
   const bpFilt   = ctx.createBiquadFilter();
   bpFilt.type = 'lowpass'; bpFilt.frequency.value = 300;
   const bgGain = ctx.createGain();
-  bgGain.gain.value = 0.04;
+  bgGain.gain.value = 0.12;
   backdrop.connect(bpFilt); bpFilt.connect(bgGain); bgGain.connect(outGain);
 
   // Mix pulsing resonant component
   const pulseGain = ctx.createGain();
-  pulseGain.gain.value = 0.25;
+  pulseGain.gain.value = 0.55;
   resonFilt.connect(pulseGain); pulseGain.connect(outGain);
 
   // Slow melodic sine underlayer (E1 = 41.2 Hz)
   const drone  = ctx.createOscillator();
   const dGain  = ctx.createGain();
   drone.type = 'sine'; drone.frequency.value = 41.2;
-  dGain.gain.value = 0.07;
+  dGain.gain.value = 0.18;
   drone.connect(dGain); dGain.connect(outGain);
 
   lfo.start(); drone.start(); noise.start(); backdrop.start();
