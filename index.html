@@ -134,6 +134,7 @@
         <button id="btn-zen" aria-pressed="false" title="Zen Mode (Z)" class="nav-btn">Zen</button>
         <button id="btn-realistic" aria-pressed="false" title="Realistic Lighting" class="nav-btn">Lighting</button>
         <button id="btn-lightspeed" title="Speed of Light Mode (L)" class="nav-btn">Light Speed</button>
+        <button id="btn-settings" title="Visual Settings" class="nav-btn" aria-label="Visual Settings">&#9881;</button>
       </div>
     </div>
 
@@ -451,6 +452,52 @@
       <button id="story-modal-close" class="story-modal-close">&#x2715;</button>
     </div>
   </div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="modal-glass settings-panel">
+    <h2 id="settings-title" data-i18n="settings.title">Visual Settings</h2>
+    <button class="modal-close" id="settings-close" aria-label="Close">&#x2715;</button>
+
+    <section class="settings-section">
+      <label data-i18n="settings.preset">Graphics Preset</label>
+      <div class="preset-buttons">
+        <button class="preset-btn" data-preset="low" data-i18n="settings.low">Low</button>
+        <button class="preset-btn active" data-preset="medium" data-i18n="settings.medium">Medium</button>
+        <button class="preset-btn" data-preset="high" data-i18n="settings.high">High</button>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <label for="bloom-slider" data-i18n="settings.bloom">Bloom Strength <span id="bloom-val">0.40</span></label>
+      <input type="range" id="bloom-slider" min="0" max="1" step="0.05" value="0.4">
+    </section>
+
+    <section class="settings-section settings-row">
+      <label for="toggle-autoexp" data-i18n="settings.autoExposure">Auto-Exposure</label>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-autoexp"><span class="slider"></span></label>
+    </section>
+
+    <section class="settings-section">
+      <label data-i18n="settings.orbitStyle">Orbit Style</label>
+      <select id="orbit-style-select">
+        <option value="glow" data-i18n="settings.orbitGlow">Glow</option>
+        <option value="dashed" data-i18n="settings.orbitDashed" selected>Dashed</option>
+        <option value="off" data-i18n="settings.orbitOff">Off</option>
+      </select>
+    </section>
+
+    <section class="settings-section settings-row">
+      <label for="toggle-dof" data-i18n="settings.dof">Depth of Field <span class="badge-risk">GPU</span></label>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-dof"><span class="slider"></span></label>
+    </section>
+
+    <section class="settings-section settings-row">
+      <label for="toggle-grain" data-i18n="settings.filmGrain">Film Grain</label>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-grain"><span class="slider"></span></label>
+    </section>
+  </div>
+</div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

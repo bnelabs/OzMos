@@ -20,6 +20,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { SOLAR_SYSTEM, PLANET_ORDER } from '../data/solarSystem.js';
 import {
   sunVertexShader, sunFragmentShader,
@@ -163,7 +165,9 @@ export class SolarSystemScene {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
+    this._exposure = 1.2;
+    this._autoExposure = false;
+    this.renderer.toneMappingExposure = this._exposure;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.container.appendChild(this.renderer.domElement);
 
@@ -234,6 +238,9 @@ export class SolarSystemScene {
       );
       this._bloomPass = bloomPass;
       this.composer.addPass(bloomPass);
+      this._filmPass = new FilmPass(0, 0, 0, false);
+      this._filmPass.uniforms.nIntensity.value = 0;
+      this.composer.addPass(this._filmPass);
     }
 
     // Bind event handlers so we can remove them later
@@ -2326,6 +2333,21 @@ export class SolarSystemScene {
     if (camLen >= 55 && camLen <= 90) {
       this.addCameraShake(0.008);
     }
+    // Auto-exposure
+    if (this._autoExposure && this.sun) {
+      const sp = this.sun.position.clone().project(this.camera);
+      const onScreen = Math.abs(sp.x) < 1 && Math.abs(sp.y) < 1 && sp.z < 1;
+      const targetExp = onScreen ? 0.9 : 1.4;
+      this._exposure += (targetExp - this._exposure) * 0.02;
+      this.renderer.toneMappingExposure = THREE.MathUtils.clamp(this._exposure, 0.7, 1.8);
+    }
+
+    // DOF focus tracking
+    if (this._bokehPass?.enabled && this._targetCameraPos) {
+      const dist = this._targetCameraPos.distanceTo(this.camera.position);
+      this._bokehPass.uniforms['focus'].value += (dist - this._bokehPass.uniforms['focus'].value) * 0.05;
+    }
+
     // Lens flare visibility based on sun position
     if (this._lensFlareSprite && this.sun) {
       const sunScreenPos = this.sun.position.clone().project(this.camera);
@@ -2531,5 +2553,60 @@ export class SolarSystemScene {
     }
 
     this.renderer.dispose();
+  }
+
+  setBloomStrength(v) {
+    if (this._bloomPass) this._bloomPass.strength = v;
+  }
+
+  setAutoExposure(on) {
+    this._autoExposure = on;
+    if (!on) {
+      this._exposure = 1.2;
+      this.renderer.toneMappingExposure = 1.2;
+    }
+  }
+
+  setOrbitStyle(style) {
+    this._orbitStyle = style;
+    Object.values(this.orbitLines || {}).forEach(line => {
+      line.visible = style !== 'off';
+      if (line.material) line.material.opacity = style === 'glow' ? 0.15 : 0.5;
+    });
+    Object.values(this.orbitGlows || {}).forEach(g => {
+      g.visible = style === 'glow';
+    });
+  }
+
+  setDOF(on, opts = {}) {
+    if (this._quality === 'low') return;
+    if (on && !this._bokehPass && this.composer) {
+      try {
+        this._bokehPass = new BokehPass(this.scene, this.camera, {
+          focus: 36, aperture: 0.001, maxblur: 0.003
+        });
+        const insertIdx = this.composer.passes.length - 1;
+        this.composer.passes.splice(insertIdx, 0, this._bokehPass);
+      } catch (e) { console.warn('BokehPass unavailable', e); return; }
+    }
+    if (this._bokehPass) this._bokehPass.enabled = on;
+  }
+
+  setFilmGrain(on) {
+    if (this._filmPass) this._filmPass.uniforms.nIntensity.value = on ? 0.35 : 0;
+  }
+
+  setGraphicsPreset(preset) {
+    const cfgMap = {
+      low:    { bloom: 0.2, grain: false, dof: false, autoExp: false, orbitStyle: 'dashed' },
+      medium: { bloom: 0.4, grain: false, dof: false, autoExp: true,  orbitStyle: 'glow'   },
+      high:   { bloom: 0.5, grain: true,  dof: true,  autoExp: true,  orbitStyle: 'glow'   },
+    };
+    const cfg = cfgMap[preset] || cfgMap.medium;
+    this.setBloomStrength(cfg.bloom);
+    this.setFilmGrain(cfg.grain);
+    this.setDOF(cfg.dof);
+    this.setAutoExposure(cfg.autoExp);
+    this.setOrbitStyle(cfg.orbitStyle);
   }
 }

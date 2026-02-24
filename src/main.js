@@ -397,6 +397,31 @@ function showLangPicker() {
   });
 }
 
+function initSettings() {
+  const bloom  = storageGet('settings.bloom', 0.4);
+  const autoEx = storageGet('settings.autoExposure', false);
+  const orbit  = storageGet('settings.orbitStyle', 'glow');
+  const dof    = storageGet('settings.dof', false);
+  const grain  = storageGet('settings.grain', false);
+  const preset = storageGet('settings.preset', 'medium');
+
+  document.getElementById('bloom-slider').value = bloom;
+  document.getElementById('bloom-val').textContent = parseFloat(bloom).toFixed(2);
+  document.getElementById('toggle-autoexp').checked = autoEx;
+  document.getElementById('orbit-style-select').value = orbit;
+  document.getElementById('toggle-dof').checked = dof;
+  document.getElementById('toggle-grain').checked = grain;
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.preset === preset);
+  });
+
+  scene.setBloomStrength(bloom);
+  scene.setAutoExposure(autoEx);
+  scene.setOrbitStyle(orbit);
+  scene.setDOF(dof);
+  scene.setFilmGrain(grain);
+}
+
 function startApp() {
   // Now that language is set, initialize UI
   initLanguageSwitcher();
@@ -479,6 +504,9 @@ function startApp() {
   flybyMode = new FlybyMode(
     scene.scene, scene.camera, scene.controls, audioManager, announce
   );
+
+  // Initialize visual settings from storage
+  initSettings();
 
   // Listen for scene errors
   document.addEventListener('scene-error', (e) => {
@@ -2281,6 +2309,49 @@ function toggleLightSpeed() {
 }
 
 document.getElementById('btn-lightspeed')?.addEventListener('click', toggleLightSpeed);
+
+// Settings modal
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('settings-modal').classList.remove('hidden');
+});
+document.getElementById('settings-close').addEventListener('click', () => {
+  document.getElementById('settings-modal').classList.add('hidden');
+});
+document.getElementById('settings-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) document.getElementById('settings-modal').classList.add('hidden');
+});
+
+// Settings controls
+document.getElementById('bloom-slider').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('bloom-val').textContent = v.toFixed(2);
+  scene.setBloomStrength(v);
+  storageSet('settings.bloom', v);
+});
+document.getElementById('toggle-autoexp').addEventListener('change', e => {
+  scene.setAutoExposure(e.target.checked);
+  storageSet('settings.autoExposure', e.target.checked);
+});
+document.getElementById('orbit-style-select').addEventListener('change', e => {
+  scene.setOrbitStyle(e.target.value);
+  storageSet('settings.orbitStyle', e.target.value);
+});
+document.getElementById('toggle-dof').addEventListener('change', e => {
+  scene.setDOF(e.target.checked);
+  storageSet('settings.dof', e.target.checked);
+});
+document.getElementById('toggle-grain').addEventListener('change', e => {
+  scene.setFilmGrain(e.target.checked);
+  storageSet('settings.grain', e.target.checked);
+});
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    scene.setGraphicsPreset(btn.dataset.preset);
+    storageSet('settings.preset', btn.dataset.preset);
+  });
+});
 
 // ==================== Keyboard Shortcuts ====================
 
