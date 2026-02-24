@@ -243,6 +243,8 @@ export class SolarSystemScene {
     this._startCinematicSweep();
 
     // Start render loop
+    this._initCameraEffects();
+    this._initEclipseShadows();
     this._animating = true;
     this._animate();
     } catch (err) {
@@ -559,17 +561,25 @@ export class SolarSystemScene {
 
   _createLighting() {
     // Hemisphere light — warm neutral to avoid purple contamination
-    const hemi = new THREE.HemisphereLight(0x887766, 0x221111, 0.2);
-    this.scene.add(hemi);
+    this._hemiLight = new THREE.HemisphereLight(0x887766, 0x221111, 0.2);
+    this.scene.add(this._hemiLight);
 
     // Ambient light — dim gray for base visibility on dark sides
-    const ambient = new THREE.AmbientLight(0x181818, 0.3);
-    this.scene.add(ambient);
+    this._ambientLight = new THREE.AmbientLight(0x181818, 0.3);
+    this.scene.add(this._ambientLight);
 
     // Subtle fill light to reduce harsh shadows
     this._fillLight = new THREE.DirectionalLight(0xffffff, 0.08);
     this._fillLight.position.set(0, 1, 1);
     this.scene.add(this._fillLight);
+  }
+
+  setRealisticLighting(on) {
+    if (this._hemiLight) this._hemiLight.intensity = on ? 0 : 0.2;
+    if (this._ambientLight) this._ambientLight.intensity = on ? 0 : 0.3;
+    if (this._fillLight) this._fillLight.intensity = on ? 0 : 0.08;
+    if (this.sunLight) this.sunLight.intensity = on ? 4.5 : 3.5;
+    this._realisticLighting = on;
   }
 
   _createPlanets() {
@@ -787,6 +797,7 @@ export class SolarSystemScene {
           const moonData = planetData.moons[mi];
           const moonGroup = new THREE.Group();
           moonGroup.rotation.y = mi * 2.1 + Math.random() * Math.PI;
+          moonGroup.rotation.z = THREE.MathUtils.degToRad(moonData.inclination || 0);
           planetMesh.add(moonGroup);
 
           // Correct ratio: (moonRealRadius / planetRealRadius) * planetDisplayRadius
@@ -840,6 +851,7 @@ export class SolarSystemScene {
           });
           const moonOrbitLine = new THREE.Line(moonOrbitGeo, moonOrbitMat);
           planetMesh.add(moonOrbitLine);
+          moonOrbitLine.rotation.z = THREE.MathUtils.degToRad(moonData.inclination || 0);
 
           moonMeshes.push({
             mesh: moonMesh,
@@ -1102,6 +1114,7 @@ export class SolarSystemScene {
           const moonData = planetData.moons[mi];
           const moonGroup = new THREE.Group();
           moonGroup.rotation.y = mi * 2.1 + Math.random() * Math.PI;
+          moonGroup.rotation.z = THREE.MathUtils.degToRad(moonData.inclination || 0);
           planetMesh.add(moonGroup);
 
           const moonRadius = Math.max(0.12, (moonData.radius / planetData.radius) * planetData.displayRadius);
@@ -1849,6 +1862,9 @@ export class SolarSystemScene {
       this.issTracker.update(delta * speed, elapsed, this.camera);
     }
 
+    // Eclipse shadow updates
+    this._updateEclipseShadows();
+
     // Proximity-based orbit line fading
     if (this.showOrbits) {
       const allOrbitKeys = [...planetKeys, ...DWARF_PLANET_ORDER, ...ASTEROID_ORDER];
@@ -1962,6 +1978,9 @@ export class SolarSystemScene {
       this.controls.target.lerp(newTarget, 0.015);
     }
 
+    // Camera effects (shake, lens flare)
+    this._updateCameraEffects(delta);
+
     // Hover check
     this._checkHover();
 
@@ -1977,6 +1996,63 @@ export class SolarSystemScene {
 
     // Callback for label updates
     if (this.onFrame) this.onFrame(delta);
+  }
+
+  _initCameraEffects() {
+    this._shakeIntensity = 0;
+    // Lens flare sprite
+    const flareCanvas = document.createElement('canvas');
+    flareCanvas.width = 64; flareCanvas.height = 64;
+    const ctx = flareCanvas.getContext('2d');
+    const grad = ctx.createRadialGradient(32,32,0,32,32,32);
+    grad.addColorStop(0,'rgba(255,240,200,0.9)');
+    grad.addColorStop(0.3,'rgba(255,220,100,0.4)');
+    grad.addColorStop(1,'rgba(255,200,50,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,64,64);
+    const flareTex = new THREE.CanvasTexture(flareCanvas);
+    const flareMat = new THREE.SpriteMaterial({ map: flareTex, transparent: true, blending: THREE.AdditiveBlending, depthTest: false });
+    this._lensFlareSprite = new THREE.Sprite(flareMat);
+    this._lensFlareSprite.scale.set(8,8,1);
+    this._lensFlareSprite.position.set(0,0,0);
+    this.scene.add(this._lensFlareSprite);
+    // Lens dirt DOM overlay
+    const dirt = document.createElement('div');
+    dirt.id = 'lens-dirt';
+    dirt.style.cssText = 'position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 0.3s;background:radial-gradient(ellipse at 30% 40%,rgba(255,240,180,0.12) 0%,transparent 60%),radial-gradient(ellipse at 70% 60%,rgba(200,220,255,0.08) 0%,transparent 50%);z-index:5;';
+    document.body.appendChild(dirt);
+    this._lensDirt = dirt;
+  }
+
+  addCameraShake(intensity) {
+    this._shakeIntensity = Math.max(this._shakeIntensity || 0, intensity);
+  }
+
+  _updateCameraEffects(delta) {
+    // Decay shake
+    if (this._shakeIntensity > 0) {
+      const offset = new THREE.Vector3(
+        (Math.random()-0.5) * this._shakeIntensity,
+        (Math.random()-0.5) * this._shakeIntensity,
+        (Math.random()-0.5) * this._shakeIntensity
+      );
+      this.camera.position.add(offset);
+      this._shakeIntensity *= 0.88;
+      if (this._shakeIntensity < 0.0001) this._shakeIntensity = 0;
+    }
+    // Asteroid belt continuous shake
+    const camLen = this.camera.position.length();
+    if (camLen >= 55 && camLen <= 90) {
+      this.addCameraShake(0.008);
+    }
+    // Lens flare visibility based on sun position
+    if (this._lensFlareSprite && this.sun) {
+      const sunScreenPos = this.sun.position.clone().project(this.camera);
+      const inView = Math.abs(sunScreenPos.x) < 1 && Math.abs(sunScreenPos.y) < 1 && sunScreenPos.z < 1;
+      const opacity = inView ? Math.max(0, 1 - Math.sqrt(sunScreenPos.x*sunScreenPos.x + sunScreenPos.y*sunScreenPos.y) * 1.5) : 0;
+      this._lensFlareSprite.material.opacity = opacity * 0.6;
+      if (this._lensDirt) this._lensDirt.style.opacity = (opacity * 0.4).toFixed(3);
+    }
   }
 
   /** Simple debounce helper — returns a debounced version of fn */
@@ -2009,6 +2085,104 @@ export class SolarSystemScene {
     // Re-upload textures and restart the loop
     this._animating = true;
     this._animate();
+  }
+
+
+  _initEclipseShadows() {
+    this._eclipseShadows = {};
+    // Earth lunar eclipse shadow
+    const earthShadowGeo = new THREE.PlaneGeometry(1, 1);
+    const earthShadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const earthShadow = new THREE.Mesh(earthShadowGeo, earthShadowMat);
+    earthShadow.renderOrder = 1;
+    this.scene.add(earthShadow);
+    this._eclipseShadows['earth'] = earthShadow;
+
+    // Jupiter moon shadow dots
+    for (const moonKey of ['io', 'europa']) {
+      const jShadowGeo = new THREE.PlaneGeometry(1, 1);
+      const jShadowMat = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const jShadow = new THREE.Mesh(jShadowGeo, jShadowMat);
+      jShadow.renderOrder = 1;
+      this.scene.add(jShadow);
+      this._eclipseShadows[`jupiter_${moonKey}`] = jShadow;
+    }
+  }
+
+  _updateEclipseShadows() {
+    if (!this._eclipseShadows) return;
+    const sunPos = new THREE.Vector3(0, 0, 0);
+
+    // Earth-Moon eclipse
+    const earthPlanet = this.planets['earth'];
+    if (earthPlanet && this.moonMeshes['earth'] && this.moonMeshes['earth'].length > 0) {
+      const earthPos = new THREE.Vector3();
+      earthPlanet.mesh.getWorldPosition(earthPos);
+      const moonEntry = this.moonMeshes['earth'][0];
+      const moonPos = new THREE.Vector3();
+      moonEntry.mesh.getWorldPosition(moonPos);
+      const moonRadius = moonEntry.data.radius ? moonEntry.mesh.geometry.parameters.radius : 0.27;
+
+      // Anti-solar direction from earth
+      const antiSolar = earthPos.clone().sub(sunPos).normalize();
+      const toMoon = moonPos.clone().sub(earthPos).normalize();
+      const alignment = antiSolar.dot(toMoon);
+      const moonDist = earthPos.distanceTo(moonPos);
+      const shadow = this._eclipseShadows['earth'];
+      if (alignment > 0.97 && moonDist < earthPlanet.data.displayRadius * 5) {
+        // Moon is roughly in anti-solar direction — solar eclipse
+        const angularSize = (earthPlanet.data.displayRadius * 0.3) / moonDist;
+        const scale = angularSize * 2;
+        shadow.position.copy(earthPos);
+        shadow.lookAt(sunPos);
+        shadow.scale.set(scale, scale, 1);
+        shadow.material.opacity = Math.min(0.7, (alignment - 0.97) / 0.03 * 0.7);
+      } else {
+        shadow.material.opacity = 0;
+      }
+    }
+
+    // Jupiter moon shadows
+    const jupiterPlanet = this.planets['jupiter'];
+    if (jupiterPlanet && this.moonMeshes['jupiter']) {
+      const jupiterPos = new THREE.Vector3();
+      jupiterPlanet.mesh.getWorldPosition(jupiterPos);
+      const antiSolar = jupiterPos.clone().sub(sunPos).normalize();
+      const moonNames = ['io', 'europa'];
+      this.moonMeshes['jupiter'].forEach((moonEntry, mi) => {
+        if (mi >= moonNames.length) return;
+        const moonPos = new THREE.Vector3();
+        moonEntry.mesh.getWorldPosition(moonPos);
+        const toMoon = moonPos.clone().sub(jupiterPos).normalize();
+        const alignment = antiSolar.dot(toMoon);
+        const moonDist = jupiterPos.distanceTo(moonPos);
+        const shadow = this._eclipseShadows[`jupiter_${moonNames[mi]}`];
+        if (!shadow) return;
+        if (alignment > 0.95 && moonDist < jupiterPlanet.data.displayRadius * 6) {
+          const scale = jupiterPlanet.data.displayRadius * 0.15;
+          shadow.position.copy(jupiterPos);
+          const toSun = sunPos.clone().sub(jupiterPos).normalize();
+          shadow.position.addScaledVector(toSun, jupiterPlanet.data.displayRadius * 0.8);
+          shadow.lookAt(sunPos);
+          shadow.scale.set(scale, scale, 1);
+          shadow.material.opacity = Math.min(0.5, (alignment - 0.95) / 0.05 * 0.5);
+        } else {
+          shadow.material.opacity = 0;
+        }
+      });
+    }
   }
 
   dispose() {

@@ -226,6 +226,7 @@ export const SOLAR_SYSTEM = {
         diameter: '3,474 km',
         description: 'The fifth-largest moon in the solar system. Its gravitational influence stabilizes Earth\'s axial tilt and drives ocean tides. Formed ~4.5 billion years ago from debris after a Mars-sized body impacted Earth.',
         minerals: ['Anorthosite', 'Basalt', 'Iron', 'Titanium', 'Helium-3'],
+        inclination: 5.1,
       },
     ],
   },
@@ -292,6 +293,7 @@ export const SOLAR_SYSTEM = {
         diameter: '22.4 km',
         description: 'The larger and inner moon of Mars. Orbits so close it will either crash into Mars or break apart into a ring system in ~50 million years. Has a massive crater called Stickney.',
         minerals: ['Carbon-rich rock', 'Ice'],
+        inclination: 1.09,
       },
       {
         name: 'Deimos',
@@ -303,6 +305,7 @@ export const SOLAR_SYSTEM = {
         diameter: '12.4 km',
         description: 'Mars\'s smaller, outer moon. Much smoother than Phobos with fewer craters. Slowly spiraling away from Mars.',
         minerals: ['Carbon-rich rock', 'Ice'],
+        inclination: 1.79,
       },
     ],
   },
@@ -369,6 +372,7 @@ export const SOLAR_SYSTEM = {
         diameter: '3,643 km',
         description: 'The most volcanically active body in the solar system, with over 400 active volcanoes. Tidal forces from Jupiter constantly squeeze and heat its interior. Surface covered in sulfur and sulfur dioxide.',
         minerals: ['Sulfur', 'Sulfur Dioxide', 'Silicate Rock', 'Iron', 'Sodium'],
+        inclination: 0.04,
       },
       {
         name: 'Europa',
@@ -380,6 +384,7 @@ export const SOLAR_SYSTEM = {
         diameter: '3,122 km',
         description: 'Beneath its icy surface lies a global saltwater ocean with more water than all of Earth\'s oceans combined. A prime candidate for extraterrestrial life. Geysers of water vapor erupt from its surface.',
         minerals: ['Water Ice', 'Salt (NaCl)', 'Magnesium Sulfate', 'Silicates'],
+        inclination: 0.47,
       },
       {
         name: 'Ganymede',
@@ -391,6 +396,7 @@ export const SOLAR_SYSTEM = {
         diameter: '5,268 km',
         description: 'The largest moon in the solar system — bigger than Mercury. The only moon known to have its own magnetic field. Has a subsurface ocean sandwiched between ice layers.',
         minerals: ['Water Ice', 'Silicate Rock', 'Iron', 'Magnesium Sulfate'],
+        inclination: 0.2,
       },
       {
         name: 'Callisto',
@@ -402,6 +408,7 @@ export const SOLAR_SYSTEM = {
         diameter: '4,821 km',
         description: 'The most heavily cratered body in the solar system. Its ancient surface has remained largely unchanged for 4 billion years. May harbor a subsurface ocean beneath its battered crust.',
         minerals: ['Water Ice', 'Silicate Rock', 'Carbon Dioxide', 'Iron'],
+        inclination: 0.19,
       },
     ],
   },
@@ -471,6 +478,7 @@ export const SOLAR_SYSTEM = {
         diameter: '5,150 km',
         description: 'The only moon with a dense atmosphere (1.5× Earth\'s pressure). Has lakes and seas of liquid methane/ethane, rain cycles, and dunes. Second-largest moon in the solar system. The Huygens probe landed here in 2005.',
         minerals: ['Water Ice', 'Methane', 'Ethane', 'Nitrogen', 'Tholins', 'Benzene'],
+        inclination: 27.3,
       },
       {
         name: 'Enceladus',
@@ -675,6 +683,7 @@ export const SOLAR_SYSTEM = {
         diameter: '2,707 km',
         description: 'The largest moon of Neptune and the only large moon with a retrograde orbit, indicating it was captured from the Kuiper Belt. Has active geysers of nitrogen gas. Its surface at -235°C is one of the coldest in the solar system.',
         minerals: ['Nitrogen Ice', 'Water Ice', 'Carbon Dioxide Ice', 'Methane Ice', 'Carbon Monoxide'],
+        inclination: 157.0,
       },
       {
         name: 'Proteus',

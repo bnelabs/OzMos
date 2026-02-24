@@ -187,6 +187,8 @@ let crossSectionViewer = null;
 let flybyMode = null;
 let solarStorm = null;
 let sfx = null;
+let zenMode = false;
+let realisticLighting = false;
 let _planetThumbnails = {}; // canvas dataURLs keyed by planet name
 
 // Quiz state
@@ -671,6 +673,9 @@ function startApp() {
 
   // Wire scene callbacks
   wireSceneCallbacks();
+
+  // Camera shake on solar storm milestone
+  document.addEventListener('storm-milestone', () => { if (scene) scene.addCameraShake(0.25); });
 
   // Play music — AudioContext was already initialized synchronously
   // in endDedication() or lang picker click handler (user gesture context)
@@ -1465,6 +1470,15 @@ btnFullscreen.addEventListener('click', () => {
   }
 });
 
+document.getElementById('btn-zen')?.addEventListener('click', toggleZenMode);
+
+document.getElementById('btn-realistic')?.addEventListener('click', () => {
+  realisticLighting = !realisticLighting;
+  if (scene) scene.setRealisticLighting(realisticLighting);
+  const btn = document.getElementById('btn-realistic');
+  if (btn) btn.setAttribute('aria-pressed', String(realisticLighting));
+});
+
 // ==================== Hamburger Menu ====================
 
 if (navHamburger && navControls) {
@@ -2185,6 +2199,16 @@ if (infoDragHandle) {
   });
 }
 
+function toggleZenMode() {
+  zenMode = !zenMode;
+  document.body.classList.toggle('zen-mode', zenMode);
+  const btn = document.getElementById('btn-zen');
+  if (btn) {
+    btn.setAttribute('aria-pressed', String(zenMode));
+    btn.textContent = zenMode ? t('zen.enabled') : t('zen.toggle');
+  }
+}
+
 // ==================== Keyboard Shortcuts ====================
 
 function toggleKeyboardHelp() {
@@ -2273,6 +2297,9 @@ document.addEventListener('keydown', (e) => {
       scene.goToOverview();
     }
   }
+
+  // Z key — toggle zen mode
+  if (e.key === 'z' || e.key === 'Z') { toggleZenMode(); return; }
 
   // Number keys 1-9 for planets
   const num = parseInt(e.key, 10);

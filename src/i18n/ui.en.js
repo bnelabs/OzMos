@@ -1095,6 +1095,12 @@ export const ui_en = {
   'storm.infoTitle': 'Solar Storm',
   'storm.infoBody': 'A Coronal Mass Ejection (CME) is a massive burst of solar wind and magnetic fields. When directed toward Earth, it can cause geomagnetic storms, aurora displays, and satellite disruptions.',
 
+  'zen.toggle': 'Zen Mode',
+  'zen.enabled': 'Exit Zen',
+  'zen.disabled': 'Zen Mode',
+  'lighting.realistic': 'Realistic Light',
+  'lighting.off': 'Standard Light',
+
   'layer.charon.iceCrust.compositionShort': 'H₂O ice, CO₂',
   'layer.charon.iceCrust.compositionFull': 'Water ice and carbon dioxide ice',
   'layer.charon.iceCrust.thickness': '20 – 40 km',

@@ -410,31 +410,45 @@ export function getMissionTrajectory(missionId) {
     // Generate intermediate points between waypoints
     if (i < waypoints.length - 1) {
       const nextWp = waypoints[i + 1];
-      const steps = 20; // intermediate points per segment
-      for (let s = 1; s <= steps; s++) {
-        const t = s / (steps + 1);
-        const interpDate = interpolateDate(wp.date, nextWp.date, t);
+      const numSamples = 80; // Keplerian arc samples per segment
 
-        // For the spacecraft, interpolate position between waypoint bodies
-        let nextPos;
-        if (nextWp.body && ELEMENTS[nextWp.body]) {
-          nextPos = getPlanetPosition(nextWp.body, nextWp.date);
-        } else if (nextWp.distance) {
-          const dir2 = pos.clone().normalize();
-          if (dir2.length() < 0.01) dir2.set(1, 0, 0);
-          nextPos = dir2.multiplyScalar(Math.min(nextWp.distance, 160));
-        } else {
-          nextPos = new THREE.Vector3(0, 0, 0);
+      // Get next waypoint position
+      let nextPos;
+      if (nextWp.body && ELEMENTS[nextWp.body]) {
+        nextPos = getPlanetPosition(nextWp.body, nextWp.date);
+      } else if (nextWp.distance) {
+        const dir2 = pos.clone().normalize();
+        if (dir2.length() < 0.01) dir2.set(1, 0, 0);
+        nextPos = dir2.multiplyScalar(Math.min(nextWp.distance, 160));
+      } else {
+        nextPos = new THREE.Vector3(0, 0, 0);
+      }
+
+      // Keplerian-style elliptical arc between waypoints
+      function buildKeplerSegment(p1, p2, numSamp) {
+        const d1 = p1.length();
+        const d2 = p2.length();
+        const a = (d1 + d2) / 2; // semi-major axis approximation
+        const e = Math.abs(d1 - d2) / (d1 + d2 + 0.001); // eccentricity
+        const pts = [];
+        const angle1 = Math.atan2(p1.z, p1.x);
+        const angle2 = Math.atan2(p2.z, p2.x);
+        for (let si = 1; si <= numSamp; si++) {
+          const t = si / (numSamp + 1);
+          // Eccentric anomaly interpolation (simple approximation)
+          const angle = angle1 + t * (angle2 - angle1);
+          const r = a * (1 - e * e) / (1 + e * Math.cos(angle));
+          const baseVec = p1.clone().lerp(p2, t).normalize();
+          pts.push(baseVec.multiplyScalar(r));
         }
+        return pts;
+      }
 
-        // Smooth interpolation with slight curvature
-        const interp = new THREE.Vector3().lerpVectors(pos, nextPos, t);
-        // Add slight orbital curvature - spacecraft doesn't travel straight lines
-        const perpendicular = new THREE.Vector3(-interp.z, 0, interp.x).normalize();
-        const curvature = Math.sin(t * Math.PI) * pos.distanceTo(nextPos) * 0.08;
-        interp.add(perpendicular.multiplyScalar(curvature));
-
-        allPoints.push(interp);
+      const segPoints = buildKeplerSegment(pos, nextPos, numSamples);
+      for (let si = 0; si < segPoints.length; si++) {
+        const t = (si + 1) / (numSamples + 1);
+        const interpDate = interpolateDate(wp.date, nextWp.date, t);
+        allPoints.push(segPoints[si]);
         allDates.push(interpDate);
       }
     }

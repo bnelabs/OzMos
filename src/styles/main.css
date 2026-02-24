@@ -4533,3 +4533,20 @@ kbd {
     font-size: 0.88rem;
   }
 }
+
+/* Zen Mode */
+body.zen-mode #info-panel,
+body.zen-mode #nav-controls,
+body.zen-mode #compare-panel,
+body.zen-mode #planet-bar,
+body.zen-mode #tour-hud,
+body.zen-mode #flyby-hud,
+body.zen-mode .planet-label {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+body.zen-mode #btn-zen {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
