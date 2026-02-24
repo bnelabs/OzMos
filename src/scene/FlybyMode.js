@@ -124,6 +124,9 @@ export class FlybyMode {
     }
 
     if (this._elapsed >= TOTAL_DURATION) this._onEnd();
+
+    // Update descent mode if active
+    this.updateDescent(this._camera, delta);
   }
 
   pause()       { this._paused = true; }
@@ -476,5 +479,167 @@ export class FlybyMode {
     if (!this._active) return;
     if (e.key === 'Escape') { e.preventDefault(); this.exit(); }
     if (e.key === ' ')      { e.preventDefault(); this.togglePause(); }
+  }
+
+  // ─── Surface Descent Mode ────────────────────────────────────────────────
+
+  startDescentMode(bodyKey, bodyWorldPos, radius) {
+    if (this._descentActive) return;
+    this._descentActive = true;
+    this._descentTime = 0;
+    this._descentDuration = 45;
+    this._descentBody = bodyKey;
+    this._descentRadius = radius;
+    this._descentPos = bodyWorldPos.clone();
+
+    // Fog density lerp state
+    this._descentFogStart = 0;
+
+    // Cloud particles (100 billboard quads)
+    const cloudGroup = new THREE.Group();
+    for (let i = 0; i < 100; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = (Math.random() - 0.5) * Math.PI * 0.6;
+      const r = radius * (1.1 + Math.random() * 0.4);
+      const geo = new THREE.PlaneGeometry(radius * 0.15, radius * 0.08);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xcccccc,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const plane = new THREE.Mesh(geo, mat);
+      plane.position.set(
+        r * Math.cos(theta) * Math.cos(phi) + bodyWorldPos.x,
+        r * Math.sin(phi) + bodyWorldPos.y,
+        r * Math.sin(theta) * Math.cos(phi) + bodyWorldPos.z
+      );
+      plane.lookAt(bodyWorldPos);
+      cloudGroup.add(plane);
+    }
+    if (this._scene) this._scene.add(cloudGroup);
+    this._descentClouds = cloudGroup;
+
+    // Altitude HUD
+    const hud = document.createElement('div');
+    hud.id = 'descent-hud';
+    hud.style.cssText = 'position:fixed;top:80px;right:24px;background:rgba(0,10,20,0.85);border:1px solid rgba(100,180,255,0.4);border-radius:10px;padding:14px 20px;color:#99ccff;font-family:monospace;font-size:0.82rem;z-index:700;min-width:180px;';
+    const PLANET_SURFACE = {
+      earth: { temp: '15°C', pressure: '1 atm', color: '#4a90d9' },
+      venus: { temp: '465°C', pressure: '90 atm', color: '#e8a040' },
+      mars: { temp: '-65°C', pressure: '0.006 atm', color: '#c1440e' },
+      jupiter: { temp: '-108°C (cloud top)', pressure: '1 atm (cloud top)', color: '#c8a878' },
+      saturn: { temp: '-139°C (cloud top)', pressure: '1 atm (cloud top)', color: '#e8d8a0' },
+      titan: { temp: '-179°C', pressure: '1.5 atm', color: '#c8a060' },
+      default: { temp: 'Unknown', pressure: 'Unknown', color: '#8888aa' },
+    };
+    const surfData = PLANET_SURFACE[bodyKey] || PLANET_SURFACE.default;
+    hud.innerHTML = `
+      <div style="font-size:0.95rem;font-weight:bold;color:${surfData.color};margin-bottom:8px;">DESCENT: ${bodyKey.toUpperCase()}</div>
+      <div id="descent-alt">Altitude: ---</div>
+      <div id="descent-pressure">Pressure: ${surfData.pressure}</div>
+      <div id="descent-temp">Surface temp: ${surfData.temp}</div>
+      <div style="margin-top:10px;">
+        <button id="descent-exit" style="background:rgba(255,80,80,0.2);border:1px solid #f44;color:#f99;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">Exit Descent</button>
+      </div>`;
+    document.body.appendChild(hud);
+    this._descentHud = hud;
+    document.getElementById('descent-exit')?.addEventListener('click', () => this.stopDescentMode());
+  }
+
+  stopDescentMode() {
+    if (!this._descentActive) return;
+    this._descentActive = false;
+    if (this._descentClouds && this._scene) {
+      this._scene.remove(this._descentClouds);
+      this._descentClouds.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+      this._descentClouds = null;
+    }
+    if (this._descentHud) { this._descentHud.remove(); this._descentHud = null; }
+    // Reset fog if the scene has it
+    if (this._scene && this._scene.fog) this._scene.fog.density = 0;
+  }
+
+  updateDescent(camera, delta) {
+    if (!this._descentActive) return;
+    this._descentTime += delta;
+    const t = this._descentTime / this._descentDuration;
+
+    const bodyPos = this._descentPos;
+    const r = this._descentRadius;
+
+    if (t < 1) {
+      // Phase 1 (0-10s): Approach from above
+      if (this._descentTime < 10) {
+        const phase = this._descentTime / 10;
+        const startDist = r * 8;
+        const endDist = r * 2;
+        const dist = startDist + (endDist - startDist) * phase;
+        camera.position.set(
+          bodyPos.x + dist * Math.cos(phase * 0.5),
+          bodyPos.y + dist * (1 - phase * 0.7),
+          bodyPos.z + dist * Math.sin(phase * 0.5)
+        );
+        camera.lookAt(bodyPos);
+      }
+      // Phase 2 (10-25s): Cloud penetration — increase fog
+      else if (this._descentTime < 25) {
+        const phase = (this._descentTime - 10) / 15;
+        const dist = r * 2 - r * 1.5 * phase;
+        camera.position.set(
+          bodyPos.x + dist * Math.cos(this._descentTime * 0.1),
+          bodyPos.y + dist * 0.3,
+          bodyPos.z + dist * Math.sin(this._descentTime * 0.1)
+        );
+        camera.lookAt(bodyPos);
+
+        // Increase fog
+        if (this._scene && !this._scene.fog) {
+          this._scene.fog = new THREE.FogExp2(0x88aacc, 0);
+        }
+        if (this._scene && this._scene.fog) {
+          this._scene.fog.density = phase * 0.04;
+        }
+
+        // Fade in clouds
+        if (this._descentClouds) {
+          this._descentClouds.traverse(obj => {
+            if (obj.material) obj.material.opacity = phase * 0.4;
+          });
+        }
+      }
+      // Phase 3 (25-45s): Surface / Deep
+      else {
+        const phase = (this._descentTime - 25) / 20;
+        const dist = r * 0.5 - r * 0.3 * phase;
+        camera.position.set(
+          bodyPos.x + dist * Math.cos(this._descentTime * 0.15),
+          bodyPos.y + r * 0.1,
+          bodyPos.z + dist * Math.sin(this._descentTime * 0.15)
+        );
+        camera.lookAt(bodyPos);
+
+        // Reduce fog slightly near surface (haze clears)
+        if (this._scene && this._scene.fog) {
+          this._scene.fog.density = 0.04 - phase * 0.02;
+        }
+      }
+
+      // Update altitude HUD
+      const camDist = camera.position.distanceTo(bodyPos);
+      const altScene = Math.max(0, camDist - r);
+      // Scale: 1 scene unit ≈ 1000km for Earth-sized
+      const altKm = Math.round(altScene * 1000);
+      const altEl = document.getElementById('descent-alt');
+      if (altEl) altEl.textContent = `Altitude: ${altKm.toLocaleString()} km`;
+    }
+
+    if (this._descentTime >= this._descentDuration) {
+      this.stopDescentMode();
+    }
   }
 }

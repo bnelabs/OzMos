@@ -208,4 +208,93 @@ export class SFXManager {
     osc.start(now);
     osc.stop(now + 0.07);
   }
+
+  /**
+   * Chorus waves — detuned sines for Earth focus sonification
+   * 6 oscillators with LFO sweep, 8-second fade
+   */
+  playChorusWaves() {
+    if (!this._enabled || !this._ctx) return;
+    const ctx = this._ctx;
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0, now);
+    gain.gain.linearRampToValueAtTime(this._volume * 0.08, now + 1.0);
+    gain.gain.linearRampToValueAtTime(0.0, now + 8.0);
+    gain.connect(ctx.destination);
+
+    // 6 detuned sines for chorus
+    const freqs = [300, 303, 350, 354, 600, 597];
+    // LFO sweep
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.15;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 30;
+    lfo.connect(lfoGain);
+
+    for (const freq of freqs) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      lfoGain.connect(osc.frequency);
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + 8.5);
+    }
+    lfo.start(now);
+    lfo.stop(now + 8.5);
+  }
+
+  /**
+   * Jupiter lightning — sharp noise burst with low-freq resonance
+   */
+  playJupiterLightning() {
+    if (!this._enabled || !this._ctx) return;
+    const ctx = this._ctx;
+    const now = ctx.currentTime;
+    const bufferSize = Math.floor(ctx.sampleRate * 0.15);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 80;
+    filter.Q.value = 3;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(this._volume * 0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(now);
+  }
+
+  /**
+   * Magnetic reconnection — chirp tone descending 800→200Hz
+   */
+  playMagneticReconnection() {
+    if (!this._enabled || !this._ctx) return;
+    const ctx = this._ctx;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(this._volume * 0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.22);
+  }
 }

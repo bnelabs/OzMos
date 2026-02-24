@@ -36,6 +36,7 @@ import {
 import { getPlanetHeliocentricAU, getCurrentDateStr, dateToJulian, julianToDateStr } from './OrbitalMechanics.js';
 import { AsteroidBelt } from './AsteroidBelt.js';
 import { ISSTracker } from './ISSTracker.js';
+import { Comet } from './Comet.js';
 import { DWARF_PLANETS, DWARF_PLANET_ORDER } from '../data/dwarfPlanets.js';
 import { ASTEROIDS, ASTEROID_ORDER } from '../data/asteroids.js';
 import {
@@ -263,6 +264,8 @@ export class SolarSystemScene {
 
     // Start render loop
     this._initCameraEffects();
+    this._initComets();
+    this._initMeteorShower();
     this._initEclipseShadows();
     this._animating = true;
     this._animate();
@@ -2035,6 +2038,39 @@ export class SolarSystemScene {
       this.issTracker.update(delta * speed, elapsed, this.camera);
     }
 
+    // Update comets
+    if (this._comets) {
+      const deltaDays = delta * speed * this._daysPerSecond;
+      const sunWorldPos = new THREE.Vector3(0, 0, 0);
+      for (const comet of this._comets) {
+        comet.update(Math.min(deltaDays, 100), sunWorldPos);
+      }
+    }
+
+    // Meteor shower: trigger when time warp >= 500x and Earth is focused
+    if (this._meteorShowerObj) {
+      const earthPlanet = this.planets['earth'];
+      if (earthPlanet && speed >= 500 && this.selectedPlanet === 'earth') {
+        if (!this._meteorShowerActive && Math.random() < 0.002) {
+          // Trigger
+          this._meteorShowerActive = true;
+          this._meteorShowerTimer = 0;
+          earthPlanet.mesh.add(this._meteorShowerObj);
+          document.dispatchEvent(new CustomEvent('meteor-shower'));
+        }
+      }
+      if (this._meteorShowerActive) {
+        this._meteorShowerTimer += delta;
+        const fadeIn = Math.min(1, this._meteorShowerTimer / 0.2);
+        const fadeOut = this._meteorShowerTimer > 2.5 ? Math.max(0, 1 - (this._meteorShowerTimer - 2.5) / 0.5) : 1;
+        this._meteorShowerObj.material.opacity = fadeIn * fadeOut * 0.9;
+        if (this._meteorShowerTimer > 3.0) {
+          this._meteorShowerActive = false;
+          if (this._meteorShowerObj.parent) this._meteorShowerObj.parent.remove(this._meteorShowerObj);
+        }
+      }
+    }
+
     // Eclipse shadow updates
     this._updateEclipseShadows();
 
@@ -2183,6 +2219,63 @@ export class SolarSystemScene {
 
     // Callback for label updates
     if (this.onFrame) this.onFrame(delta);
+  }
+
+
+  _initComets() {
+    this._comets = [
+      // Halley-like (79-year period)
+      new Comet(this.scene, {
+        periapsis: 3.2, apoapsis: 200, period: 28835,
+        inclination: 162.2, startAngle: 0, name: "Halley-like",
+      }),
+      // Hale-Bopp-like (2500-year period)
+      new Comet(this.scene, {
+        periapsis: 5.0, apoapsis: 360, period: 913000,
+        inclination: 89.4, startAngle: 1.8, name: "Hale-Bopp-like",
+      }),
+      // Short-period (6-year)
+      new Comet(this.scene, {
+        periapsis: 5.5, apoapsis: 80, period: 2190,
+        inclination: 11.8, startAngle: 3.5, name: "Short-period",
+      }),
+    ];
+  }
+
+  _initMeteorShower() {
+    const count = 150;
+    const positions = new Float32Array(count * 6); // 2 points per streak
+    const geo = new THREE.BufferGeometry();
+    // Create line segments — 2 vertices per streak
+    for (let i = 0; i < count; i++) {
+      // Random point on Earth's night hemisphere (lat cap around dark side)
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random()); // 0 to PI/2 → front hemisphere; offset to dark side
+      const r = 1.5; // slightly outside Earth surface (display radius ~1.5 for Earth)
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.cos(phi) * 0.5;
+      const z = r * Math.sin(phi) * Math.sin(theta);
+      const len = 0.1 + Math.random() * 0.2;
+      // Line from outer atmosphere inward
+      positions[i * 6] = x;
+      positions[i * 6 + 1] = y;
+      positions[i * 6 + 2] = z;
+      positions[i * 6 + 3] = x * (1 - len / r);
+      positions[i * 6 + 4] = y * (1 - len / r);
+      positions[i * 6 + 5] = z * (1 - len / r);
+    }
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffffaa,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this._meteorShowerObj = new THREE.LineSegments(geo, mat);
+    // Will be added to Earth's mesh later
+    this._meteorShowerActive = false;
+    this._meteorShowerTimer = 0;
   }
 
   _initCameraEffects() {
@@ -2385,6 +2478,9 @@ export class SolarSystemScene {
 
     if (this.asteroidBelt) this.asteroidBelt.dispose();
     if (this.issTracker) this.issTracker.dispose();
+    if (this._comets) {
+      for (const c of this._comets) c.dispose();
+    }
     if (this.earthCityLights) {
       this.earthCityLights.geometry.dispose();
       const mat = this.earthCityLights.material;

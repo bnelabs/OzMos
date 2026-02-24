@@ -676,6 +676,12 @@ function startApp() {
 
   // Camera shake on solar storm milestone
   document.addEventListener('storm-milestone', () => { if (scene) scene.addCameraShake(0.25); });
+  document.addEventListener('meteor-shower', () => {
+    sfx?.playMeteorImpact?.();
+  });
+  document.addEventListener('magnetic-reconnection', () => {
+    sfx?.playMagneticReconnection?.();
+  });
 
   // Play music — AudioContext was already initialized synchronously
   // in endDedication() or lang picker click handler (user gesture context)
@@ -1001,10 +1007,20 @@ function applyInfoPanelThumbnail(key) {
   }
 }
 
+// Data sonification per planet focus
+function onPlanetFocused(key) {
+  if (key === 'earth') {
+    sfx?.playChorusWaves?.();
+  } else if (key === 'jupiter') {
+    if (Math.random() < 0.15) sfx?.playJupiterLightning?.();
+  }
+}
+
 function openInfoPanel(key) {
   disposeCutaway();
   currentPlanetKey = key;
   currentMoonIndex = null;
+  onPlanetFocused(key);
 
   // Show compact view first (visual-first: 3D scene stays dominant)
   safeRender(infoContent, () => renderCompactPlanetInfo(key));

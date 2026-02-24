@@ -1492,6 +1492,21 @@ body.nav-sheet-open::after {
   color: var(--text-primary);
 }
 
+/* ===== Compare Panel — Drag Mode ===== */
+.compare-drag-btn {
+  margin: 8px;
+  padding: 6px 16px;
+  background: rgba(68,136,204,0.2);
+  border: 1px solid #4488cc;
+  color: #4488cc;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.2s;
+}
+.compare-drag-btn:hover { background: rgba(68,136,204,0.4); }
+#compare-drag-canvas { margin: 8px 0; display: none; }
+
 /* ===== Mission Panel — compact bottom overlay ===== */
 #mission-panel {
   position: fixed;

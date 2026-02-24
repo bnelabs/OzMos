@@ -49,6 +49,13 @@ export class SolarStormSimulation {
     this._impactEffects = [];
     this._intervals = [];
 
+    // Magnetosphere subregions
+    this._magnetosheaths = [];
+    this._magnetotails = [];
+
+    // Aurora field lines particle system
+    this._auroraFieldLines = null;
+
     // Milestone event tracking
     this._milestones = {
       cmeStart: false,
@@ -154,11 +161,138 @@ export class SolarStormSimulation {
       this._scene.add(bowMesh);
       this._magnetospheres.push({ mesh: bowMesh, key, field, bowShockSize });
 
+      // Magnetosheath and magnetotail subregions
+      const sheathMesh = this._createMagnetosheath(pos, bowShockSize);
+      this._scene.add(sheathMesh);
+      this._magnetosheaths.push({ mesh: sheathMesh, key });
+
+      const tailMesh = this._createMagnetotail(pos, bowShockSize);
+      this._scene.add(tailMesh);
+      this._magnetotails.push({ mesh: tailMesh, key });
+
       // Magnetic field lines (desktop only, selected planets)
       if (this._showFieldLines && ['earth', 'jupiter', 'saturn'].includes(key)) {
         this._createFieldLines(key, pos, radius, field, fieldColor);
       }
     }
+  }
+
+  _createMagnetosheath(pos, bowShockRadius) {
+    const sheathRadius = bowShockRadius * 0.75;
+    const geo = new THREE.SphereGeometry(sheathRadius, 32, 32);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xff8844,
+      transparent: true,
+      opacity: 0.06,
+      depthWrite: false,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    return mesh;
+  }
+
+  _createMagnetotail(pos, radius) {
+    const geo = new THREE.CylinderGeometry(radius * 0.8, radius * 2, radius * 20, 16, 1, true);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x4466ff,
+      transparent: true,
+      opacity: 0.04,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.z = Math.PI / 2;
+    // Offset so tail extends away from sun: planet pos is approximately along +X from origin
+    const sunDir = pos.clone().normalize();
+    const tailCenter = pos.clone().addScaledVector(sunDir.negate(), radius * 10);
+    mesh.position.copy(tailCenter);
+    return mesh;
+  }
+
+  _createAuroraFieldLines(pos, radius) {
+    const numLines = 24;
+    const particlesPerLine = 60;
+    const totalParticles = numLines * particlesPerLine;
+
+    const positions = new Float32Array(totalParticles * 3);
+    const colors = new Float32Array(totalParticles * 3);
+    const energies = new Float32Array(totalParticles);
+
+    for (let line = 0; line < numLines; line++) {
+      const longitude = (line / numLines) * Math.PI * 2;
+      const L = 2.5 * radius;
+      const poleSign = line < numLines / 2 ? 1 : -1;
+
+      for (let p = 0; p < particlesPerLine; p++) {
+        const idx = (line * particlesPerLine + p) * 3;
+        const latFrac = p / (particlesPerLine - 1);
+        const latitude = THREE.MathUtils.degToRad(20 + latFrac * 55) * poleSign;
+        const r = L * Math.cos(latitude) * Math.cos(latitude);
+
+        positions[idx]     = pos.x + r * Math.cos(latitude) * Math.cos(longitude);
+        positions[idx + 1] = pos.y + r * Math.sin(latitude);
+        positions[idx + 2] = pos.z + r * Math.cos(latitude) * Math.sin(longitude);
+
+        const energy = 1.0 - latFrac;
+        energies[line * particlesPerLine + p] = energy;
+        colors[idx]     = energy < 0.5 ? 0.5 + energy : 0.0;
+        colors[idx + 1] = energy > 0.3 ? energy * 1.2 : 0.0;
+        colors[idx + 2] = energy > 0.5 ? 1.0 : energy * 2;
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.setAttribute('energy', new THREE.Float32BufferAttribute(energies, 1));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.08,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.0, // starts invisible, shown on CME impact
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const points = new THREE.Points(geo, mat);
+    this._auroraFieldLines = points;
+    return points;
+  }
+
+  _triggerReconnection() {
+    if (!this._active) return;
+    const geo = new THREE.BufferGeometry();
+    const pts = [
+      new THREE.Vector3(-0.5, 0.5, 0),
+      new THREE.Vector3(0.5, -0.5, 0),
+    ];
+    geo.setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
+    });
+    const line = new THREE.Line(geo, mat);
+
+    // Position at Earth's bow shock boundary if available
+    const earthMag = this._magnetospheres.find(m => m.key === 'earth');
+    if (earthMag) {
+      const planetPos = earthMag.mesh.position.clone();
+      line.position.copy(planetPos);
+      line.position.x += (earthMag.bowShockSize || 3) * 0.8;
+    }
+    this._scene.add(line);
+    document.dispatchEvent(new CustomEvent('magnetic-reconnection'));
+    setTimeout(() => {
+      line.material.dispose();
+      line.geometry.dispose();
+      if (line.parent) this._scene.remove(line);
+    }, 200);
   }
 
   _createFieldLines(key, pos, radius, field, color) {
@@ -372,6 +506,17 @@ export class SolarStormSimulation {
         this._auroras.push({ mesh: auroraMesh, key, startTime: this._elapsed });
       }
 
+      // Add aurora field lines if not yet created (Earth only for performance)
+      if (key === 'earth' && !this._auroraFieldLines) {
+        const fieldLinesObj = this._createAuroraFieldLines(pos, radius);
+        this._scene.add(fieldLinesObj);
+      }
+
+      // Show aurora field lines for Earth
+      if (key === 'earth' && this._auroraFieldLines) {
+        this._auroraFieldLines.material.opacity = 0.5;
+      }
+
       // Animate aurora intensity: ramp up, sustain, fade
       let auroraTime = 0;
       const auroraAnim = setInterval(() => {
@@ -579,6 +724,22 @@ export class SolarStormSimulation {
       }
     }
 
+    // Random magnetic reconnection flash at magnetopause (only during active CME)
+    if (this._cmeActive && Math.random() < 0.003) {
+      this._triggerReconnection();
+    }
+
+    // Animate aurora field line particles
+    if (this._auroraFieldLines) {
+      const elapsed = Date.now() * 0.001;
+      this._auroraFieldLines.material.opacity = Math.max(
+        0,
+        this._auroraFieldLines.material.opacity * 0.9995 +
+          0.3 * Math.sin(elapsed * 2.0) * (this._auroraFieldLines.material.opacity > 0.01 ? 1 : 0),
+      );
+      this._auroraFieldLines.geometry.attributes.position.needsUpdate = false;
+    }
+
     // Update magnetospheres
     for (const mag of this._magnetospheres) {
       if (mag.mesh.material.uniforms) {
@@ -614,6 +775,20 @@ export class SolarStormSimulation {
       // Update position to follow planet
       const newPos = this._getPlanetPos(mag.key);
       mag.mesh.position.copy(newPos);
+    }
+
+    // Update magnetosheath and magnetotail positions to follow planets
+    for (const sheath of this._magnetosheaths) {
+      const newPos = this._getPlanetPos(sheath.key);
+      sheath.mesh.position.copy(newPos);
+    }
+    for (const tail of this._magnetotails) {
+      const newPos = this._getPlanetPos(tail.key);
+      // Recalculate tail center: extend anti-solar
+      const mag = this._magnetospheres.find(m => m.key === tail.key);
+      const tailLen = (mag ? mag.bowShockSize : 3) * 10;
+      const sunDir = newPos.clone().normalize().negate();
+      tail.mesh.position.copy(newPos.clone().addScaledVector(sunDir, tailLen));
     }
 
     // Check if CME has finished
@@ -662,6 +837,27 @@ export class SolarStormSimulation {
       mag.mesh.material.dispose();
     }
     this._magnetospheres = [];
+
+    for (const sheath of this._magnetosheaths) {
+      if (sheath.mesh.parent) this._scene.remove(sheath.mesh);
+      sheath.mesh.geometry.dispose();
+      sheath.mesh.material.dispose();
+    }
+    this._magnetosheaths = [];
+
+    for (const tail of this._magnetotails) {
+      if (tail.mesh.parent) this._scene.remove(tail.mesh);
+      tail.mesh.geometry.dispose();
+      tail.mesh.material.dispose();
+    }
+    this._magnetotails = [];
+
+    if (this._auroraFieldLines) {
+      if (this._auroraFieldLines.parent) this._scene.remove(this._auroraFieldLines);
+      this._auroraFieldLines.geometry.dispose();
+      this._auroraFieldLines.material.dispose();
+      this._auroraFieldLines = null;
+    }
 
     for (const tube of this._fieldLines) {
       this._scene.remove(tube);
