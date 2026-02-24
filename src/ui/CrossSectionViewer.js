@@ -570,8 +570,13 @@ export class CrossSectionViewer {
 
     this._rowEls = [];
     this._activeLayerIndex = -1;
-    this._expandTarget  = [];
-    this._expandCurrent = [];
+    this._expandTarget    = [];
+    this._expandCurrent   = [];
+    this._expandZTarget   = [];
+    this._expandZCurrent  = [];
+    this._baseZOffsets    = [];
+    this._hoverLayerIdx   = -1;
+    this._autoExplodeDone = false;
 
     // Remove all color dot elements
     for (const d of this._colorDots) d.remove();
@@ -711,8 +716,13 @@ export class CrossSectionViewer {
     }
 
     // Initialise expansion state arrays now that _layerMeshes is fully populated
-    this._expandTarget  = new Array(this._layerMeshes.length).fill(0);
-    this._expandCurrent = new Array(this._layerMeshes.length).fill(0);
+    this._expandTarget    = new Array(this._layerMeshes.length).fill(0);
+    this._expandCurrent   = new Array(this._layerMeshes.length).fill(0);
+    this._expandZTarget   = new Array(this._layerMeshes.length).fill(0);
+    this._expandZCurrent  = new Array(this._layerMeshes.length).fill(0);
+    this._baseZOffsets    = new Array(this._layerMeshes.length).fill(0);
+    this._autoExplodeDone = false;
+    this._hoverLayerIdx   = -1;
 
     // ── Cut-face disc ──
     // Full circle at x=0.002, facing +X (toward camera).
@@ -767,7 +777,7 @@ export class CrossSectionViewer {
     this._scene.add(this._scanRing);
 
     // ── Core particle sparks ──
-    const pCount = 70;
+    const pCount = 280;
     const pPos   = new Float32Array(pCount * 3);
     const pCol   = new Float32Array(pCount * 3);
     const innerR = (layers[layers.length - 1].r / layers[0].r) * 0.48;
@@ -787,7 +797,7 @@ export class CrossSectionViewer {
     pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
     pGeo.setAttribute('color',    new THREE.BufferAttribute(pCol, 3));
     this._coreParticles = new THREE.Points(pGeo, new THREE.PointsMaterial({
-      size: 0.022, vertexColors: true, transparent: true,
+      size: 0.028, vertexColors: true, transparent: true,
       opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
     }));
 
@@ -867,7 +877,7 @@ export class CrossSectionViewer {
     if (this._coreLight) {
       const base  = cutT * 2.0;
       const pulse = elapsed > 2.5 ? Math.sin(elapsed * 1.5) * 0.5 : 0;
-      this._coreLight.intensity = base + pulse;
+      this._coreLight.intensity = base * 1.4 + pulse * 1.2;
     }
     if (this._coreLightBlue) {
       const base  = cutT * 0.8;
@@ -885,21 +895,29 @@ export class CrossSectionViewer {
       }
     }
 
-    // ── Camera: zoom in (0–2.8 s) then slow cinematic orbit (2.8 s+) ──
+    // ── Camera: zoom in (0–2.8 s) then gentle sway (2.8 s+) ──
+    // Sway ±12° from start — never swings to the back so cut face stays visible.
     if (this._camera) {
+      const r          = Math.sqrt(this._camEnd.x ** 2 + this._camEnd.z ** 2);
+      const startAngle = Math.atan2(this._camEnd.x, this._camEnd.z);
       if (elapsed < 2.8) {
         const camT = this._easeOutCubic(Math.min(elapsed / 2.8, 1.0));
         this._camera.position.lerpVectors(this._camStart, this._camEnd, camT);
         this._camera.lookAt(0, 0, 0);
       } else {
-        // Slow cinematic orbit (0.08 rad/s — was 0.15)
-        const r          = Math.sqrt(this._camEnd.x ** 2 + this._camEnd.z ** 2);
-        const startAngle = Math.atan2(this._camEnd.x, this._camEnd.z);
-        const angle      = startAngle + (elapsed - 2.8) * 0.08;
+        // Gentle sway: ±0.22 rad (±12.6°), period ~31 s
+        const angle = startAngle + Math.sin((elapsed - 2.8) * 0.20) * 0.22;
         this._camera.position.x = r * Math.sin(angle);
         this._camera.position.z = r * Math.cos(angle);
         this._camera.position.y = this._camEnd.y;
         this._camera.lookAt(0, 0, 0);
+
+        // ── Clip plane tracks camera so cut always faces toward viewer ──
+        if (this._clipPlane1 && cutT >= 1.0) {
+          const camAngle = Math.atan2(this._camera.position.x, this._camera.position.z);
+          this._clipPlane1.normal.set(-Math.sin(camAngle), 0, -Math.cos(camAngle));
+          this._clipPlane1.constant = 0;
+        }
       }
     }
 
@@ -913,16 +931,62 @@ export class CrossSectionViewer {
       this._updateDotPositions();
     }
 
-    // ── Layer explosion lerp (scale + X translation) ──
-    if (this._expandTarget && this._expandCurrent) {
+    // ── Phase 4: Auto-explode layers along Z toward camera (3.2 s+) ──
+    // Spacing capped so total spread ≤ 0.40 units (sphere radius = 1).
+    if (elapsed > 3.2 && !this._autoExplodeDone && this._currentLayers) {
+      const n = this._currentLayers.length;
+      for (let i = 0; i < n; i++) {
+        const innerOrder = n - 1 - i; // 0 = outermost, n-1 = innermost
+        const spacing = Math.min(0.10, 0.40 / Math.max(n - 1, 1));
+        this._baseZOffsets[i] = innerOrder * spacing;
+      }
+      this._autoExplodeDone = true;
+    }
+
+    // ── Layer Z-explosion lerp + hover scale ──
+    if (this._expandZTarget && this._expandZCurrent) {
       for (let i = 0; i < this._layerMeshes.length; i++) {
-        this._expandCurrent[i] += (this._expandTarget[i] - this._expandCurrent[i]) * 0.1;
-        const exp = this._expandCurrent[i];
-        // Keep a slight scale effect AND add X offset to pull layer out toward camera
-        this._layerMeshes[i].scale.setScalar(1.0 + exp * 0.05);
-        // Active layer: pull forward along +X; outer layers: push slightly back
-        const xPull = exp > 0.01 ? exp * 0.35 : 0;
-        this._layerMeshes[i].position.x = xPull;
+        const hoverBoost = (i === this._hoverLayerIdx) ? 0.12 : 0;
+        this._expandZTarget[i] = (this._baseZOffsets[i] || 0) + hoverBoost;
+        this._expandZCurrent[i] += (this._expandZTarget[i] - this._expandZCurrent[i]) * 0.055;
+        this._layerMeshes[i].position.z = this._expandZCurrent[i];
+        // Hover: subtle scale emphasis
+        const hovScale = (i === this._hoverLayerIdx) ? 1.04 : 1.0;
+        this._layerMeshes[i].scale.setScalar(hovScale);
+      }
+    }
+
+    // ── Fade outer shells progressively as inner layers float forward ──
+    if (this._layerMeshes.length > 1 && this._autoExplodeDone) {
+      const innerZ = this._expandZCurrent[this._layerMeshes.length - 1] || 0;
+      const maxZ   = this._baseZOffsets[this._layerMeshes.length - 1] || 0.01;
+      const spread = Math.min(innerZ / maxZ, 1.0);
+      for (let i = 0; i < this._layerMeshes.length - 1; i++) {
+        const mat = this._layerMeshes[i].material;
+        if (!mat.transparent) { mat.transparent = true; mat.needsUpdate = true; }
+        const depth = i / Math.max(this._layerMeshes.length - 1, 1);
+        mat.opacity = Math.max(0.45, 1.0 - spread * (0.45 - depth * 0.12));
+      }
+    }
+
+    // ── Boundary rings: pulse after cut settles ──
+    if (elapsed > 2.5 && this._boundaryRings) {
+      for (let i = 0; i < this._boundaryRings.length; i++) {
+        const ring = this._boundaryRings[i];
+        if (ring?.material) {
+          ring.material.opacity = 0.40 + 0.58 * Math.abs(Math.sin(elapsed * 1.35 + i * 0.70));
+        }
+      }
+    }
+
+    // ── Innermost core: dramatic pulsing glow after explosion settles ──
+    if (elapsed > 4.0 && this._layerMeshes.length > 0 && this._activeLayerIndex < 0) {
+      const coreIdx = this._layerMeshes.length - 1;
+      const coreMat = this._layerMeshes[coreIdx]?.material;
+      if (coreMat?.userData.baseEmissive) {
+        const pulse = 3.0 + 5.0 * Math.abs(Math.sin(elapsed * 1.9));
+        coreMat.emissive = coreMat.userData.baseEmissive.clone().multiplyScalar(pulse);
+        coreMat.emissiveIntensity = 1.0;
       }
     }
 
@@ -1238,12 +1302,8 @@ export class CrossSectionViewer {
       mat.emissiveIntensity = 1.0;
     }
 
-    // Expand the hovered layer outward along +X so it separates from the cut face
-    if (this._expandTarget) {
-      for (let i = 0; i < this._expandTarget.length; i++) {
-        this._expandTarget[i] = (entering && i === index) ? 0.07 : 0;
-      }
-    }
+    // Track hover layer index — Z boost is applied in _tick via _hoverLayerIdx
+    this._hoverLayerIdx = (entering && this._activeLayerIndex < 0) ? index : -1;
   }
 
   _highlightLayer(index) {
