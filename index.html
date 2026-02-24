@@ -118,6 +118,7 @@
         </button>
         <button id="btn-orbits" class="nav-btn nav-btn--utility active" title="Toggle Orbit Lines" aria-label="Toggle Orbit Lines" aria-pressed="true" data-i18n-aria="aria.orbits" data-i18n="nav.orbits">Orbits</button>
         <button id="btn-labels" class="nav-btn nav-btn--utility active" title="Toggle Labels" aria-label="Toggle Labels" aria-pressed="true" data-i18n-aria="aria.labels" data-i18n="nav.labels">Labels</button>
+        <button id="btn-scale" class="nav-btn nav-btn--utility" title="Real Scale Comparison" aria-label="Real Scale Comparison" data-i18n="nav.scale">Scale</button>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-group" data-group-label="Media">
@@ -131,9 +132,6 @@
           <span class="nav-icon" aria-hidden="true">&#9788;</span> <span class="nav-btn-text" data-i18n="nav.storm">Storm</span>
         </button>
         <button id="btn-fullscreen" class="nav-btn nav-btn--media" title="Fullscreen" aria-label="Toggle Fullscreen" data-i18n-aria="aria.fullscreen">&#x26F6;</button>
-        <button id="btn-zen" aria-pressed="false" title="Zen Mode (Z)" class="nav-btn">Zen</button>
-        <button id="btn-realistic" aria-pressed="false" title="Realistic Lighting" class="nav-btn">Lighting</button>
-        <button id="btn-lightspeed" title="Speed of Light Mode (L)" class="nav-btn">Light Speed</button>
         <button id="btn-settings" title="Visual Settings" class="nav-btn" aria-label="Visual Settings">&#9881;</button>
       </div>
     </div>
@@ -469,7 +467,7 @@
     </section>
 
     <section class="settings-section">
-      <label for="bloom-slider" data-i18n="settings.bloom">Bloom Strength <span id="bloom-val">0.40</span></label>
+      <label for="bloom-slider"><span data-i18n="settings.bloom">Bloom Strength</span> <span id="bloom-val">0.40</span></label>
       <input type="range" id="bloom-slider" min="0" max="1" step="0.05" value="0.4">
     </section>
 
@@ -488,7 +486,7 @@
     </section>
 
     <section class="settings-section settings-row">
-      <label for="toggle-dof" data-i18n="settings.dof">Depth of Field <span class="badge-risk">GPU</span></label>
+      <label for="toggle-dof"><span data-i18n="settings.dof">Depth of Field</span> <span class="badge-risk">GPU</span></label>
       <label class="toggle-switch"><input type="checkbox" id="toggle-dof"><span class="slider"></span></label>
     </section>
 
@@ -496,6 +494,33 @@
       <label for="toggle-grain" data-i18n="settings.filmGrain">Film Grain</label>
       <label class="toggle-switch"><input type="checkbox" id="toggle-grain"><span class="slider"></span></label>
     </section>
+
+    <hr class="settings-divider">
+
+    <section class="settings-section settings-row">
+      <label for="settings-zen"><span data-i18n="settings.zenMode">Zen Mode</span> <kbd>Z</kbd></label>
+      <label class="toggle-switch"><input type="checkbox" id="settings-zen"><span class="slider"></span></label>
+    </section>
+
+    <section class="settings-section settings-row">
+      <label for="settings-realistic"><span data-i18n="settings.lighting">Realistic Lighting</span></label>
+      <label class="toggle-switch"><input type="checkbox" id="settings-realistic"><span class="slider"></span></label>
+    </section>
+
+    <section class="settings-section settings-row">
+      <label><span data-i18n="settings.lightSpeed">Light Speed Mode</span> <kbd>L</kbd></label>
+      <button class="preset-btn" id="settings-lightspeed" data-i18n="settings.lightSpeedBtn">Launch</button>
+    </section>
+  </div>
+</div>
+
+<div id="scale-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="scale-title">
+  <div class="modal-glass scale-panel">
+    <h2 id="scale-title" data-i18n="scale.title">Real Scale Comparison</h2>
+    <button class="modal-close" id="scale-close" aria-label="Close">&#x2715;</button>
+    <p class="scale-subtitle" data-i18n="scale.subtitle">Planet diameters to scale (sqrt-scaled for readability)</p>
+    <div id="scale-svg-container"></div>
+    <p class="scale-ref" id="scale-ref">&#x2190; 1 Earth diameter (12,742 km) &#x2192;</p>
   </div>
 </div>
 

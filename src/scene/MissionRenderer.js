@@ -69,18 +69,18 @@ export class MissionRenderer {
     const lineMat = new THREE.LineBasicMaterial({
       color: new THREE.Color(mission.color),
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.5,
       linewidth: 1,
     });
     this.trajectoryLine = new THREE.Line(lineGeo, lineMat);
     this.trajectoryGroup.add(this.trajectoryLine);
 
     // Wide outer glow tube — fat enough to read against the black void
-    const tubeGeo = new THREE.TubeGeometry(this.curve, 300, 0.22, 8, false);
+    const tubeGeo = new THREE.TubeGeometry(this.curve, 300, 0.16, 8, false);
     const tubeMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(mission.color),
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.15,
     });
     const tube = new THREE.Mesh(tubeGeo, tubeMat);
     this.trajectoryGroup.add(tube);
@@ -90,7 +90,7 @@ export class MissionRenderer {
     const innerMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(mission.color),
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.35,
     });
     this.trajectoryGroup.add(new THREE.Mesh(innerGeo, innerMat));
 
@@ -131,6 +131,18 @@ export class MissionRenderer {
     this.spacecraft.position.copy(points[0]);
     this.trajectoryGroup.add(this.spacecraft);
 
+    // Pulsing "current position" indicator
+    const nowGeo = new THREE.SphereGeometry(0.25, 12, 12);
+    const nowMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9,
+    });
+    this._nowIndicator = new THREE.Mesh(nowGeo, nowMat);
+    this._nowIndicator.position.copy(points[0]);
+    this.trajectoryGroup.add(this._nowIndicator);
+    this._nowPulse = 0;
+
     // Show ghost spheres for planets at launch date
     this._showEpochPlanets(mission);
 
@@ -160,6 +172,13 @@ export class MissionRenderer {
     // Move spacecraft along curve
     const point = this.curve.getPoint(this.animationProgress);
     this.spacecraft.position.copy(point);
+
+    // Update "now" indicator position and pulse
+    if (this._nowIndicator && this.curve) {
+      this._nowIndicator.position.copy(point);
+      this._nowPulse = (this._nowPulse || 0) + delta * 2;
+      this._nowIndicator.material.opacity = 0.5 + 0.4 * Math.abs(Math.sin(this._nowPulse));
+    }
 
     // Orient spacecraft along path
     const tangent = this.curve.getTangent(this.animationProgress);
@@ -579,6 +598,8 @@ export class MissionRenderer {
     this.waypointProgressPositions = [];
     this.lastWaypointIndex = -1;
     this.cameraFollowEnabled = false;
+    this._nowIndicator = null;
+    this._nowPulse = 0;
   }
 
   dispose() {

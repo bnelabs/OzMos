@@ -12,6 +12,18 @@ import { escapeHTML } from '../utils/sanitize.js';
 
 const TOTAL_DURATION = 32; // seconds
 
+const PLANET_FOG_COLORS = {
+  earth:   0x88aaff,
+  mars:    0xcc6633,
+  venus:   0xddbb44,
+  jupiter: 0xc8a868,
+  saturn:  0xe8d8a0,
+  uranus:  0x7de8e8,
+  neptune: 0x3f54ba,
+  mercury: 0xaaaaaa,
+  moon:    0x888888,
+};
+
 export class FlybyMode {
   /**
    * @param {THREE.Scene}  scene
@@ -608,9 +620,24 @@ export class FlybyMode {
         // Fade in clouds
         if (this._descentClouds) {
           this._descentClouds.traverse(obj => {
-            if (obj.material) obj.material.opacity = phase * 0.4;
+            if (obj.material) obj.material.opacity = phase * 0.6;
           });
         }
+
+        // Warm fog color toward planet hue during final 3s of Phase 2
+        if (this._scene && this._scene.fog && this._descentTime > 22) {
+          const colorPhase = (this._descentTime - 22) / 3;
+          const targetColor = PLANET_FOG_COLORS[this._descentBody] || 0x88aacc;
+          const tc = new THREE.Color(targetColor);
+          const neutral = new THREE.Color(0x88aacc);
+          this._scene.fog.color.lerpColors(neutral, tc, Math.min(colorPhase, 1));
+        }
+
+        // Subtle FOV wiggle for cloud penetration immersion (±1°)
+        const fovWiggle = Math.sin(this._descentTime * 3.7) * 1.0;
+        camera.fov = (camera.fov || 60) + (fovWiggle - (this._lastFovWiggle || 0)) * 0.3;
+        this._lastFovWiggle = fovWiggle;
+        camera.updateProjectionMatrix();
       }
       // Phase 3 (25-45s): Surface / Deep
       else {

@@ -775,12 +775,26 @@ export class SolarStormSimulation {
       // Update position to follow planet
       const newPos = this._getPlanetPos(mag.key);
       mag.mesh.position.copy(newPos);
+      // Rotate bow shock to face anti-solar (away from sun)
+      if (newPos.lengthSq() > 0.01) {
+        const antiSolar = newPos.clone().normalize();
+        const defaultFwd = new THREE.Vector3(1, 0, 0);
+        const quat = new THREE.Quaternion().setFromUnitVectors(defaultFwd, antiSolar);
+        mag.mesh.quaternion.copy(quat);
+      }
     }
 
     // Update magnetosheath and magnetotail positions to follow planets
     for (const sheath of this._magnetosheaths) {
       const newPos = this._getPlanetPos(sheath.key);
       sheath.mesh.position.copy(newPos);
+      // Rotate magnetosheath to face anti-solar (away from sun)
+      if (newPos.lengthSq() > 0.01) {
+        const antiSolar = newPos.clone().normalize();
+        const defaultFwd = new THREE.Vector3(1, 0, 0);
+        const quat = new THREE.Quaternion().setFromUnitVectors(defaultFwd, antiSolar);
+        sheath.mesh.quaternion.copy(quat);
+      }
     }
     for (const tail of this._magnetotails) {
       const newPos = this._getPlanetPos(tail.key);

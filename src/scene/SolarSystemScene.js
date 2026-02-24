@@ -138,6 +138,8 @@ export class SolarSystemScene {
     // ISS
     this.issTracker = null;
 
+    this._rotationPaused = false;
+
     this._init();
   }
 
@@ -238,8 +240,8 @@ export class SolarSystemScene {
       );
       this._bloomPass = bloomPass;
       this.composer.addPass(bloomPass);
-      this._filmPass = new FilmPass(0, 0, 0, false);
-      this._filmPass.uniforms.nIntensity.value = 0;
+      this._filmPass = new FilmPass(0, false);
+      this._filmPass.uniforms.intensity.value = 0;
       this.composer.addPass(this._filmPass);
     }
 
@@ -590,11 +592,11 @@ export class SolarSystemScene {
 
   _createLighting() {
     // Hemisphere light — warm neutral to avoid purple contamination
-    this._hemiLight = new THREE.HemisphereLight(0x887766, 0x221111, 0.2);
+    this._hemiLight = new THREE.HemisphereLight(0x998877, 0x221111, 0.4);
     this.scene.add(this._hemiLight);
 
     // Ambient light — dim gray for base visibility on dark sides
-    this._ambientLight = new THREE.AmbientLight(0x181818, 0.3);
+    this._ambientLight = new THREE.AmbientLight(0x282828, 0.6);
     this.scene.add(this._ambientLight);
 
     // Subtle fill light to reduce harsh shadows
@@ -604,11 +606,15 @@ export class SolarSystemScene {
   }
 
   setRealisticLighting(on) {
-    if (this._hemiLight) this._hemiLight.intensity = on ? 0 : 0.2;
-    if (this._ambientLight) this._ambientLight.intensity = on ? 0 : 0.3;
+    if (this._hemiLight) this._hemiLight.intensity = on ? 0 : 0.4;
+    if (this._ambientLight) this._ambientLight.intensity = on ? 0.05 : 0.6;
     if (this._fillLight) this._fillLight.intensity = on ? 0 : 0.08;
     if (this.sunLight) this.sunLight.intensity = on ? 4.5 : 3.5;
     this._realisticLighting = on;
+  }
+
+  setPlanetRotationPaused(paused) {
+    this._rotationPaused = paused;
   }
 
   _createPlanets() {
@@ -1999,12 +2005,12 @@ export class SolarSystemScene {
 
       // Self rotation
       const rotSpeed = planet.data.rotationSpeed || 0.005;
-      planet.mesh.rotation.y += rotSpeed * delta * speed * 3;
+      if (!this._rotationPaused) planet.mesh.rotation.y += rotSpeed * delta * speed * 3;
 
       // Rotate moons
       if (this.moonMeshes[key]) {
         for (const moon of this.moonMeshes[key]) {
-          moon.group.rotation.y += (moon.data.speed || 0.03) * delta * speed * 3;
+          if (!this._rotationPaused) moon.group.rotation.y += (moon.data.speed || 0.03) * delta * speed * 3;
         }
       }
     }
@@ -2023,10 +2029,10 @@ export class SolarSystemScene {
       const planet = this.dwarfPlanets[key];
       if (!planet) continue;
       const rotSpeed = planet.data.rotationSpeed || 0.005;
-      planet.mesh.rotation.y += rotSpeed * delta * speed * 3;
+      if (!this._rotationPaused) planet.mesh.rotation.y += rotSpeed * delta * speed * 3;
       if (this.dwarfMoonMeshes[key]) {
         for (const moon of this.dwarfMoonMeshes[key]) {
-          moon.group.rotation.y += (moon.data.speed || 0.03) * delta * speed * 3;
+          if (!this._rotationPaused) moon.group.rotation.y += (moon.data.speed || 0.03) * delta * speed * 3;
         }
       }
     }
@@ -2593,7 +2599,7 @@ export class SolarSystemScene {
   }
 
   setFilmGrain(on) {
-    if (this._filmPass) this._filmPass.uniforms.nIntensity.value = on ? 0.35 : 0;
+    if (this._filmPass) this._filmPass.uniforms.intensity.value = on ? 0.35 : 0;
   }
 
   setGraphicsPreset(preset) {

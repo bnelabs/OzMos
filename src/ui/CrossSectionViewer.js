@@ -13,6 +13,7 @@ import { trapFocus } from '../utils/focusTrap.js';
 import { makeSwipeDismissible } from '../utils/swipe.js';
 import { escapeHTML } from '../utils/sanitize.js';
 import '../styles/cross-section.css';
+import { getLocalizedPlanet } from '../i18n/localizedData.js';
 
 // ─── Color-coded layer palette ──────────────────────────────────────────────
 // 7 colors, assigned innermost → outermost (reversed when applied so index 0
@@ -133,59 +134,62 @@ function generateFaceTexture(layers) {
   const canvas = document.createElement('canvas');
   canvas.width = S; canvas.height = S;
   const ctx = canvas.getContext('2d');
-  const cx = S / 2, cy = S / 2;
-  const maxR = layers[0].r;
+  const cx = S / 2, cy = S / 2, maxR = S / 2;
 
-  // Dark background — layers stand out against dark space
+  // Background
   ctx.fillStyle = '#06060a';
   ctx.fillRect(0, 0, S, S);
 
-  // Draw rings outermost-first; each inner layer paints over the outer
-  for (let i = 0; i < layers.length; i++) {
-    const lt     = layerType(layers[i].key);
-    const bright = faceBrightness(lt);
-    const r      = (layers[i].r / maxR) * (S * 0.47);
-    const col    = brightenHex(layers[i].color, bright);
+  // Radial heat gradient: white-hot center → deep red → dark brown → rocky gray edge
+  const heatGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+  heatGrad.addColorStop(0.00, 'rgba(255,255,220,0.95)');  // inner core: blazing white
+  heatGrad.addColorStop(0.08, 'rgba(255,200,60,0.90)');   // inner core: golden
+  heatGrad.addColorStop(0.20, 'rgba(255,100,20,0.85)');   // outer core: orange-red
+  heatGrad.addColorStop(0.40, 'rgba(180,50,10,0.80)');    // lower mantle: deep red
+  heatGrad.addColorStop(0.60, 'rgba(100,40,15,0.75)');    // upper mantle: dark brown
+  heatGrad.addColorStop(0.80, 'rgba(70,55,40,0.70)');     // crust: brownish gray
+  heatGrad.addColorStop(1.00, 'rgba(50,45,40,0.60)');     // surface: rocky gray
+  ctx.beginPath();
+  ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+  ctx.fillStyle = heatGrad;
+  ctx.fill();
 
-    // Solid ring fill
+  // Add subtle crack-vein lines radiating from center
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#ff8844';
+  ctx.lineWidth = 1.5;
+  for (let a = 0; a < 12; a++) {
+    const angle = (a / 12) * Math.PI * 2 + 0.2;
+    const jitter = (Math.random() - 0.5) * 0.3;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = col;
-    ctx.fill();
-
-    // Thermal depth gradient per ring (hot inner edge, dark outer edge)
-    const innerR = i < layers.length - 1 ? (layers[i + 1].r / maxR) * (S * 0.47) : 0;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    if (innerR > 0) ctx.arc(cx, cy, innerR, 0, Math.PI * 2, true);
-    ctx.fillStyle = ringGradient(ctx, cx, cy, innerR, r, lt);
-    ctx.fill();
-
-    // Color-coded boundary line (glow + sharp edge using palette color)
-    const palColor = getLayerColor(i, layers.length);
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = palColor + '55'; // semi-transparent glow
-    ctx.lineWidth = 8;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = palColor;
-    ctx.lineWidth = 2.0;
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(
+      cx + Math.cos(angle + jitter) * maxR * (0.6 + Math.random() * 0.35),
+      cy + Math.sin(angle + jitter) * maxR * (0.6 + Math.random() * 0.35)
+    );
     ctx.stroke();
   }
+  ctx.restore();
 
-  // Central core glow — hot white highlight at innermost layer
-  const innerR = layers.length > 1
-    ? (layers[layers.length - 1].r / maxR) * (S * 0.47)
-    : S * 0.12;
-  const coreGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR * 0.85);
-  coreGlow.addColorStop(0, 'rgba(255,255,255,0.55)');
-  coreGlow.addColorStop(0.4, 'rgba(255,220,120,0.25)');
-  coreGlow.addColorStop(1, 'rgba(255,255,255,0)');
+  // Layer boundary rings (color-coded)
+  if (layers && layers.length > 1) {
+    const dataMaxR = layers[0].r;
+    for (let i = 1; i < layers.length; i++) {
+      const r = (layers[i].r / dataMaxR) * maxR;
+      const col = getLayerColor(i, layers.length);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = col + '99';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  // Clip to circle
+  ctx.globalCompositeOperation = 'destination-in';
   ctx.beginPath();
-  ctx.arc(cx, cy, innerR * 0.85, 0, Math.PI * 2);
-  ctx.fillStyle = coreGlow;
+  ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
   ctx.fill();
 
   return new THREE.CanvasTexture(canvas);
@@ -528,10 +532,20 @@ export class CrossSectionViewer {
 
     this._resizeObserver = new ResizeObserver(() => this._onResize());
     this._resizeObserver.observe(this._overlay);
+
+    // Pause main scene planet rotation during cross-section view
+    if (typeof window._scene?.setPlanetRotationPaused === 'function') {
+      window._scene.setPlanetRotationPaused(true);
+    }
   }
 
   close() {
     if (!this._overlay || this._overlay.classList.contains('hidden')) return;
+
+    // Resume planet rotation
+    if (typeof window._scene?.setPlanetRotationPaused === 'function') {
+      window._scene.setPlanetRotationPaused(false);
+    }
 
     document.removeEventListener('keydown', this._boundKeydown);
 
@@ -1266,17 +1280,15 @@ export class CrossSectionViewer {
   // ─── Utilities ───────────────────────────────────────────────────────────────
 
   _getBodyName(key) {
-    const map = {
-      sun: 'Sun',
-      mercury: 'Mercury', venus: 'Venus', earth: 'Earth', mars: 'Mars',
-      jupiter: 'Jupiter', saturn: 'Saturn', uranus: 'Uranus', neptune: 'Neptune',
-      pluto: 'Pluto', ceres: 'Ceres', eris: 'Eris', haumea: 'Haumea', makemake: 'Makemake',
+    const localized = getLocalizedPlanet(key);
+    if (localized?.name) return localized.name;
+    const moonMap = {
       earth_moon_0: 'Moon',
       jupiter_moon_0: 'Io', jupiter_moon_1: 'Europa',
       jupiter_moon_2: 'Ganymede', jupiter_moon_3: 'Callisto',
       saturn_moon_0: 'Titan', saturn_moon_1: 'Enceladus',
     };
-    return map[key] || key;
+    return moonMap[key] ?? key;
   }
 
   _buildSrLayerList(layers) {
