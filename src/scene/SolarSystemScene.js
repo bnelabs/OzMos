@@ -1377,11 +1377,12 @@ export class SolarSystemScene {
       litSide = new THREE.Vector3(0.6, 0.3, 0.8).normalize();
     } else {
       const sunToplanet = worldPos.clone().normalize();
-      litSide = sunToplanet.clone().negate();
-      litSide.y += 0.35;
+      litSide = sunToplanet.clone().negate(); // planet → sun = lit-side direction
+      litSide.y += 0.4;   // elevate slightly above equatorial plane
       litSide.normalize();
     }
-    this.targetCameraPos = worldPos.clone().addScaledVector(litSide, -distance);
+    // Place camera on the lit side (sun-facing hemisphere), looking at planet
+    this.targetCameraPos = worldPos.clone().addScaledVector(litSide, distance);
     this.targetLookAt = worldPos.clone();
 
     // Slower cinematic transition duration
