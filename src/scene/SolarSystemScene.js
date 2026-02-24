@@ -171,6 +171,8 @@ export class SolarSystemScene {
     this._autoExposure = false;
     this.renderer.toneMappingExposure = this._exposure;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
     // Scene
@@ -275,7 +277,6 @@ export class SolarSystemScene {
     this._initCameraEffects();
     this._initComets();
     this._initMeteorShower();
-    this._initEclipseShadows();
     this._animating = true;
     this._animate();
     } catch (err) {
@@ -603,6 +604,48 @@ export class SolarSystemScene {
     this._fillLight = new THREE.DirectionalLight(0xffffff, 0.08);
     this._fillLight.position.set(0, 1, 1);
     this.scene.add(this._fillLight);
+
+    // Shadow-casting DirectionalLight: tracks focused planet (avoids expensive PointLight cubemap)
+    this._shadowLight = new THREE.DirectionalLight(0xFFF5E0, 0);
+    this._shadowLight.castShadow = true;
+    this._shadowLight.shadow.mapSize.width = 1024;
+    this._shadowLight.shadow.mapSize.height = 1024;
+    this._shadowLight.shadow.bias = -0.001;
+    this._shadowLight.shadow.camera.near = 0.5;
+    this._shadowLight.shadow.camera.far  = 200;
+    this._shadowLight.shadow.camera.left = this._shadowLight.shadow.camera.bottom = -8;
+    this._shadowLight.shadow.camera.right = this._shadowLight.shadow.camera.top  =  8;
+    this.scene.add(this._shadowLight);
+    this.scene.add(this._shadowLight.target);
+    this._focusedPlanetKey = null;
+  }
+
+  _generateDetailNormalMap() {
+    const S = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = S;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(S, S);
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const h  = (n => n - Math.floor(n))(Math.sin(x * 127.1 + y * 311.7) * 43758.5);
+        const hr = (n => n - Math.floor(n))(Math.sin((x+1)*127.1 + y*311.7) * 43758.5);
+        const hd = (n => n - Math.floor(n))(Math.sin(x*127.1 + (y+1)*311.7) * 43758.5);
+        const nx = (h - hr) * 6.0 + 0.5;
+        const ny = (h - hd) * 6.0 + 0.5;
+        const nz = 0.88;
+        const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+        const i4 = (y * S + x) * 4;
+        img.data[i4+0] = Math.floor((nx/len*0.5+0.5)*255);
+        img.data[i4+1] = Math.floor((ny/len*0.5+0.5)*255);
+        img.data[i4+2] = Math.floor((nz/len*0.5+0.5)*255);
+        img.data[i4+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
   }
 
   setRealisticLighting(on) {
@@ -618,6 +661,10 @@ export class SolarSystemScene {
   }
 
   _createPlanets() {
+    // Detail normal map for proximity surface detail (reused across all rocky planets)
+    if (!this._detailNormalMap) {
+      this._detailNormalMap = this._generateDetailNormalMap();
+    }
     const planetKeys = PLANET_ORDER.filter(k => k !== 'sun');
     let idx = 0;
 
@@ -768,6 +815,30 @@ export class SolarSystemScene {
       planetMesh.rotation.z = THREE.MathUtils.degToRad(planetData.axialTilt || 0);
       planetMesh.userData = { key, type: 'planet' };
       tiltGroup.add(planetMesh);
+      planetMesh.castShadow = true;
+      planetMesh.receiveShadow = true;
+
+      // Proximity detail normal map (Epic 3)
+      if (planetMat.isMeshStandardMaterial) {
+        const _detailTex = this._detailNormalMap;
+        planetMat.onBeforeCompile = (shader) => {
+          shader.uniforms.uDetailNormal = { value: _detailTex };
+          shader.uniforms.uDetailBlend  = { value: 0.0 };
+          // Declare uniforms at top of fragment shader
+          shader.fragmentShader = 'uniform sampler2D uDetailNormal;\nuniform float uDetailBlend;\n'
+            + shader.fragmentShader;
+          // Blend detail normal in at close range
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <normal_fragment_maps>',
+            `#include <normal_fragment_maps>
+            if (uDetailBlend > 0.001) {
+              vec3 detailN = texture2D(uDetailNormal, vUv * 48.0).xyz * 2.0 - 1.0;
+              normal = normalize(normal + vec3(detailN.x, detailN.y, 0.0) * uDetailBlend * 0.5);
+            }`
+          );
+          planetMat.userData.detailShader = shader;
+        };
+      }
 
       // Atmosphere for Earth, Venus, Mars, gas giants
       const atmConfig = {
@@ -792,6 +863,8 @@ export class SolarSystemScene {
             uThickness: { value: atm.thickness },
             uTerminatorWidth: { value: 0.12 },
             uSunsetColor: { value: new THREE.Color(1.0, 0.4, 0.1) },
+            uPlanetRadius: { value: planetData.displayRadius },
+            uAtmRadius:    { value: planetData.displayRadius * atm.scale },
           },
           transparent: true,
           side: THREE.BackSide,
@@ -1205,6 +1278,30 @@ export class SolarSystemScene {
       planetMesh.rotation.z = THREE.MathUtils.degToRad(planetData.axialTilt || 0);
       planetMesh.userData = { key, type: 'planet' };
       tiltGroup.add(planetMesh);
+      planetMesh.castShadow = true;
+      planetMesh.receiveShadow = true;
+
+      // Proximity detail normal map (Epic 3)
+      if (planetMat.isMeshStandardMaterial) {
+        const _detailTex = this._detailNormalMap;
+        planetMat.onBeforeCompile = (shader) => {
+          shader.uniforms.uDetailNormal = { value: _detailTex };
+          shader.uniforms.uDetailBlend  = { value: 0.0 };
+          // Declare uniforms at top of fragment shader
+          shader.fragmentShader = 'uniform sampler2D uDetailNormal;\nuniform float uDetailBlend;\n'
+            + shader.fragmentShader;
+          // Blend detail normal in at close range
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <normal_fragment_maps>',
+            `#include <normal_fragment_maps>
+            if (uDetailBlend > 0.001) {
+              vec3 detailN = texture2D(uDetailNormal, vUv * 48.0).xyz * 2.0 - 1.0;
+              normal = normalize(normal + vec3(detailN.x, detailN.y, 0.0) * uDetailBlend * 0.5);
+            }`
+          );
+          planetMat.userData.detailShader = shader;
+        };
+      }
 
       // Moons for dwarf planets (e.g., Charon for Pluto)
       const moonMeshes = [];
@@ -1372,6 +1469,7 @@ export class SolarSystemScene {
 
   /** Focus camera on a planet with cinematic cubic Bezier arc */
   focusOnPlanet(key) {
+    this._focusedPlanetKey = key;
     const worldPos = this.getPlanetWorldPosition(key);
     const planetData = SOLAR_SYSTEM[key] || DWARF_PLANETS[key] || ASTEROIDS[key];
     if (!planetData) return;
@@ -2085,8 +2183,6 @@ export class SolarSystemScene {
       }
     }
 
-    // Eclipse shadow updates
-    this._updateEclipseShadows();
 
     // Proximity-based orbit line fading
     if (this.showOrbits) {
@@ -2348,10 +2444,43 @@ export class SolarSystemScene {
       this.renderer.toneMappingExposure = THREE.MathUtils.clamp(this._exposure, 0.7, 1.8);
     }
 
+    // Update shadow light to track focused planet (efficient shadow casting)
+    if (this._shadowLight && this._focusedPlanetKey) {
+      const fKey = this._focusedPlanetKey;
+      const pd   = SOLAR_SYSTEM[fKey] || DWARF_PLANETS[fKey];
+      if (pd) {
+        const wp = this.getPlanetWorldPosition(fKey);
+        // DirectionalLight: position is in sun direction FROM planet, target IS planet
+        const sunToplanet = wp.clone().normalize();
+        this._shadowLight.position.copy(wp).addScaledVector(sunToplanet.negate(), 30);
+        this._shadowLight.target.position.copy(wp);
+        this._shadowLight.target.updateMatrixWorld();
+        const r = pd.displayRadius * 2.2;
+        this._shadowLight.shadow.camera.left   = -r;
+        this._shadowLight.shadow.camera.right  =  r;
+        this._shadowLight.shadow.camera.top    =  r;
+        this._shadowLight.shadow.camera.bottom = -r;
+        this._shadowLight.shadow.camera.updateProjectionMatrix();
+        this._shadowLight.intensity = this._realisticLighting ? 4.5 : 3.5;
+      }
+    }
+
     // DOF focus tracking
     if (this._bokehPass?.enabled && this._targetCameraPos) {
       const dist = this._targetCameraPos.distanceTo(this.camera.position);
       this._bokehPass.uniforms['focus'].value += (dist - this._bokehPass.uniforms['focus'].value) * 0.05;
+    }
+
+    // Update detail normal map blend based on camera proximity
+    for (const key of ['mercury','venus','earth','mars','pluto']) {
+      const planet = this.planets[key];
+      if (!planet || !planet.mesh.material.userData.detailShader) continue;
+      const wp = this.getPlanetWorldPosition(key);
+      const camDist = this.camera.position.distanceTo(wp);
+      const r = planet.data.displayRadius;
+      // Blend in at 4x radius, full at 1.5x radius
+      const t = THREE.MathUtils.clamp((camDist / r - 1.5) / 2.5, 0.0, 1.0);
+      planet.mesh.material.userData.detailShader.uniforms.uDetailBlend.value = 1.0 - t;
     }
 
     // Lens flare visibility based on sun position

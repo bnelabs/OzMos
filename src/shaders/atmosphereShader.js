@@ -3,62 +3,127 @@
 export const atmosphereVertexShader = `
   varying vec3 vNormal;
   varying vec3 vWorldPosition;
+  varying vec3 vPlanetCenter;
 
   void main() {
     vNormal = normalize(normalMatrix * normal);
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPos.xyz;
+    // Planet center in world space (atmosphere is child of planet mesh)
+    vPlanetCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;
 
 export const atmosphereFragmentShader = `
-uniform vec3 uSunPosition;
-uniform vec3 uColor;
-uniform float uThickness;
-uniform float uTerminatorWidth;
-uniform vec3 uSunsetColor;
+uniform vec3  uSunPosition;
+uniform vec3  uColor;          // Rayleigh scatter color (sky hue, e.g. blue for Earth)
+uniform float uThickness;      // scale-height multiplier (higher = thicker atmosphere)
+uniform float uTerminatorWidth; // kept for API compat, unused
+uniform vec3  uSunsetColor;    // kept for API compat, unused
+uniform float uPlanetRadius;   // normalized planet radius
+uniform float uAtmRadius;      // normalized atmosphere outer radius
+
 varying vec3 vNormal;
 varying vec3 vWorldPosition;
+varying vec3 vPlanetCenter;
+
+const int N_PRIMARY = 8;
+const int N_LIGHT   = 4;
+const float PI      = 3.14159265;
+
+// Ray–sphere intersection; returns (tNear, tFar), negative y = no hit
+vec2 raySphere(vec3 ro, vec3 rd, vec3 sc, float sr) {
+  vec3  oc = ro - sc;
+  float b  = dot(oc, rd);
+  float c  = dot(oc, oc) - sr * sr;
+  float h  = b * b - c;
+  if (h < 0.0) return vec2(1e9, -1e9);
+  h = sqrt(h);
+  return vec2(-b - h, -b + h);
+}
+
+float densityR(float h, float HR) { return exp(-max(h, 0.0) / HR); }
+float densityM(float h, float HM) { return exp(-max(h, 0.0) / HM); }
+
+float phaseRayleigh(float c) { return 0.75 * (1.0 + c * c); }
+float phaseMie(float c) {
+  const float g = 0.76, g2 = g * g;
+  return 1.5 * (1.0 - g2) / (2.0 + g2)
+       * (1.0 + c * c) / pow(max(0.001, 1.0 + g2 - 2.0 * g * c), 1.5);
+}
 
 void main() {
-  vec3 normal = normalize(vNormal);
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  vec3 sunDir = normalize(uSunPosition - vWorldPosition);
+  vec3 rayO   = cameraPosition;
+  vec3 rayD   = normalize(vWorldPosition - cameraPosition);
+  vec3 sunDir = normalize(uSunPosition - vPlanetCenter);
 
-  // Fresnel term — atmosphere visible at grazing angles
-  float fresnel = 1.0 - max(0.0, dot(normal, viewDir));
-  fresnel = pow(fresnel, 2.5);
+  float atmThick = uAtmRadius - uPlanetRadius;
+  if (atmThick <= 0.0) discard;
 
-  // Sun-facing term for day/night
-  float sunFacing = dot(normal, sunDir);
+  float HR = atmThick * 0.25 * clamp(uThickness, 0.1, 5.0);
+  float HM = atmThick * 0.10 * clamp(uThickness, 0.1, 5.0);
 
-  // Rayleigh scatter — blue at zenith, more at limb
-  float scatter = pow(fresnel, 1.5) * uThickness;
+  // Intersect ray with atmosphere shell
+  vec2 atmHit = raySphere(rayO, rayD, vPlanetCenter, uAtmRadius);
+  if (atmHit.y < 0.0 || atmHit.x > atmHit.y) discard;
 
-  // Twilight terminator: bright strip at sunFacing ≈ 0
-  float terminator = smoothstep(-uTerminatorWidth, uTerminatorWidth, sunFacing);
-  float terminatorBand = 1.0 - abs(sunFacing) / uTerminatorWidth;
-  terminatorBand = clamp(terminatorBand, 0.0, 1.0) * step(-uTerminatorWidth * 0.5, sunFacing);
+  float tN = max(atmHit.x, 0.0);
+  float tF = atmHit.y;
 
-  // Crepuscular warm tint at terminator
-  float crepuscular = smoothstep(0.0, 0.2, sunFacing) * smoothstep(0.3, 0.05, sunFacing);
-  vec3 atmosphereColor = mix(uColor, uSunsetColor, crepuscular * 0.6);
-  atmosphereColor = mix(atmosphereColor, uColor * 1.5, terminatorBand * 0.3);
+  // Clip at planet surface (avoid scattering inside solid rock)
+  vec2 planHit = raySphere(rayO, rayD, vPlanetCenter, uPlanetRadius * 0.998);
+  if (planHit.x > 0.0 && planHit.x < tF) tF = planHit.x;
+  if (tF <= tN + 0.0001) discard;
 
-  // Day side scattering
-  float dayScatter = max(0.0, sunFacing) * scatter;
+  float stepLen = (tF - tN) / float(N_PRIMARY);
 
-  // Night side: very faint city lights / phosphorescence
-  float nightGlow = max(0.0, -sunFacing) * scatter * 0.05;
+  // Rayleigh beta (per-channel — blue dominates = blue sky)
+  vec3 betaR = uColor * 0.028;
+  float betaM = 0.007;
 
-  // Total alpha
-  float alpha = (dayScatter + nightGlow + terminatorBand * 0.15 * uThickness) * terminator;
-  // Atmospheric depth: thicker at grazing angles
-  alpha *= (0.5 + 0.5 * fresnel);
-  alpha = clamp(alpha, 0.0, 0.7);
+  vec3 accumR = vec3(0.0);
+  float accumM = 0.0;
+  float odR = 0.0, odM = 0.0; // running optical depth along view ray
 
-  gl_FragColor = vec4(atmosphereColor, alpha);
+  for (int i = 0; i < N_PRIMARY; i++) {
+    vec3 p   = rayO + rayD * (tN + (float(i) + 0.5) * stepLen);
+    float h  = length(p - vPlanetCenter) - uPlanetRadius;
+
+    float dR = densityR(h, HR) * stepLen;
+    float dM = densityM(h, HM) * stepLen;
+    odR += dR;
+    odM += dM;
+
+    // Light ray: march from sample point toward sun
+    float lodR = 0.0, lodM = 0.0;
+    vec2 sunHit = raySphere(p, sunDir, vPlanetCenter, uAtmRadius);
+    float lightStepLen = sunHit.y / float(N_LIGHT);
+
+    for (int j = 0; j < N_LIGHT; j++) {
+      vec3 lp  = p + sunDir * ((float(j) + 0.5) * lightStepLen);
+      float lh = length(lp - vPlanetCenter) - uPlanetRadius;
+      lodR += densityR(lh, HR) * lightStepLen;
+      lodM += densityM(lh, HM) * lightStepLen;
+    }
+
+    // Attenuation: Beer–Lambert through view + light paths
+    vec3 atten = exp(-(betaR * (odR + lodR) + betaM * (odM + lodM)));
+    accumR += atten * dR;
+    accumM += atten.x * dM;
+  }
+
+  float cosA   = dot(rayD, sunDir);
+  float phR    = phaseRayleigh(cosA);
+  float phM    = phaseMie(cosA);
+
+  // Final color: Rayleigh (sky color) + Mie (white-ish sun halo)
+  vec3 color = phR * betaR * accumR * 20.0
+             + phM * betaM * accumM * vec3(1.0, 0.96, 0.88) * 35.0;
+
+  float alpha = clamp(length(color) * 2.0, 0.0, 0.72);
+
+  gl_FragColor = vec4(color, alpha);
 }
 `;
 

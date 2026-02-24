@@ -465,6 +465,7 @@ export class CrossSectionViewer {
 
     // Color dot indicators (replacing numbered badges)
     this._colorDots = [];
+    this._leaderSvg = null;  // SVG overlay for leader lines
 
     // State
     this._disposed         = true;
@@ -575,6 +576,7 @@ export class CrossSectionViewer {
     // Remove all color dot elements
     for (const d of this._colorDots) d.remove();
     this._colorDots = [];
+    if (this._leaderSvg) { this._leaderSvg.remove(); this._leaderSvg = null; }
 
     if (this._focusTrap)   { this._focusTrap.release();   this._focusTrap = null; }
     if (this._swipeHandle) { this._swipeHandle.release();  this._swipeHandle = null; }
@@ -672,7 +674,7 @@ export class CrossSectionViewer {
         emissiveIntensity: 1.0,
         clippingPlanes:    clipPlanes,
         clipIntersection:  false,
-        side:              THREE.FrontSide,
+        side:              THREE.DoubleSide,
       });
       mat.userData.baseEmissive = baseEmissive.clone();
 
@@ -687,6 +689,25 @@ export class CrossSectionViewer {
 
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 96, 64), mat);
       this._layerMeshes.push(mesh);
+
+      // Rim disc shows this layer's cut face interior when the layer is pulled out
+      const innerRimR = i < layers.length - 1 ? (layers[i + 1].r / maxR) : 0;
+      const rimGeo = new THREE.RingGeometry(innerRimR + 0.001, radius, 64);
+      const rimMat = new THREE.MeshStandardMaterial({
+        color:             layer.color,
+        roughness:         0.6,
+        metalness:         0.1,
+        emissive:          new THREE.Color(layer.color).multiplyScalar(0.12),
+        emissiveIntensity: 1.0,
+        clippingPlanes:    clipPlanes,
+        clipIntersection:  false,
+        side:              THREE.DoubleSide,
+        depthWrite:        true,
+      });
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.rotation.y = Math.PI / 2; // face +X toward camera
+      rim.position.x = 0.001;
+      mesh.add(rim);
     }
 
     // Initialise expansion state arrays now that _layerMeshes is fully populated
@@ -892,12 +913,16 @@ export class CrossSectionViewer {
       this._updateDotPositions();
     }
 
-    // ── Layer expansion lerp ──
+    // ── Layer explosion lerp (scale + X translation) ──
     if (this._expandTarget && this._expandCurrent) {
       for (let i = 0; i < this._layerMeshes.length; i++) {
         this._expandCurrent[i] += (this._expandTarget[i] - this._expandCurrent[i]) * 0.1;
-        const s = 1.0 + this._expandCurrent[i];
-        this._layerMeshes[i].scale.setScalar(s);
+        const exp = this._expandCurrent[i];
+        // Keep a slight scale effect AND add X offset to pull layer out toward camera
+        this._layerMeshes[i].scale.setScalar(1.0 + exp * 0.05);
+        // Active layer: pull forward along +X; outer layers: push slightly back
+        const xPull = exp > 0.01 ? exp * 0.35 : 0;
+        this._layerMeshes[i].position.x = xPull;
       }
     }
 
@@ -979,9 +1004,24 @@ export class CrossSectionViewer {
     const bodyEl = this._overlay.querySelector('#cs-body');
     if (!bodyEl) return;
 
+    // Remove old dots
     for (const d of this._colorDots) d.remove();
     this._colorDots = [];
 
+    // Remove old SVG
+    if (this._leaderSvg) { this._leaderSvg.remove(); this._leaderSvg = null; }
+
+    // Create SVG overlay on canvas
+    const canvasRect = this._canvas.getBoundingClientRect();
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;overflow:visible;';
+    svg.setAttribute('width', canvasRect.width);
+    svg.setAttribute('height', canvasRect.height);
+    this._canvas.parentElement.style.position = 'relative';
+    this._canvas.parentElement.appendChild(svg);
+    this._leaderSvg = svg;
+
+    // Color dot HTML (small colored circles still needed for sidebar row indicators)
     const total = this._currentLayers.length;
     for (let i = 0; i < total; i++) {
       const color = getLayerColor(i, total);
@@ -990,7 +1030,6 @@ export class CrossSectionViewer {
       dot.style.setProperty('--layer-color', color);
       bodyEl.appendChild(dot);
       this._colorDots.push(dot);
-
       setTimeout(() => dot.classList.add('visible'), 80 + i * 40);
     }
 
@@ -1029,6 +1068,48 @@ export class CrossSectionViewer {
 
       this._colorDots[i].style.left = `${(bx - 6).toFixed(1)}px`;
       this._colorDots[i].style.top  = `${(by - 6).toFixed(1)}px`;
+    }
+
+    // Update SVG leader lines
+    if (this._leaderSvg && this._currentLayers) {
+      // Clear existing lines
+      while (this._leaderSvg.firstChild) this._leaderSvg.firstChild.remove();
+
+      const svgRect = this._leaderSvg.getBoundingClientRect();
+
+      for (let i = 0; i < this._colorDots.length; i++) {
+        const layer = this._currentLayers[i];
+        if (!layer) continue;
+        const dotEl = this._colorDots[i];
+        if (!dotEl.classList.contains('visible')) continue;
+
+        const color = getLayerColor(i, this._currentLayers.length);
+
+        // 3D point at layer equator edge (on cut face side)
+        const normR = layer.r / maxR;
+        // Include layer's current X offset from explosion
+        const meshX = this._layerMeshes[i] ? this._layerMeshes[i].position.x : 0;
+        const p3d = new THREE.Vector3(meshX, normR * 0.7, 0);
+        const ndc = p3d.project(this._camera);
+        const sx = (ndc.x * 0.5 + 0.5) * canvasRect.width;
+        const sy = (-ndc.y * 0.5 + 0.5) * canvasRect.height;
+
+        // Dot center in SVG space
+        const dotRect = dotEl.getBoundingClientRect();
+        const dx = dotRect.left + dotRect.width / 2 - svgRect.left;
+        const dy = dotRect.top + dotRect.height / 2 - svgRect.top;
+
+        if (sx >= 0 && sx <= canvasRect.width && sy >= 0 && sy <= canvasRect.height) {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+          line.setAttribute('points', `${sx},${sy} ${sx - 12},${sy} ${dx},${dy}`);
+          line.setAttribute('stroke', color);
+          line.setAttribute('stroke-width', '1.5');
+          line.setAttribute('stroke-opacity', '0.55');
+          line.setAttribute('fill', 'none');
+          line.setAttribute('stroke-dasharray', '3,3');
+          this._leaderSvg.appendChild(line);
+        }
+      }
     }
   }
 
@@ -1274,6 +1355,11 @@ export class CrossSectionViewer {
     this._renderer.setSize(w, h, false);
     this._camera.aspect = w / h;
     this._camera.updateProjectionMatrix();
+    // Update SVG overlay dimensions to match new canvas size
+    if (this._leaderSvg) {
+      this._leaderSvg.setAttribute('width', w);
+      this._leaderSvg.setAttribute('height', h);
+    }
     // Dot positions update automatically each frame via _updateDotPositions()
   }
 
@@ -1352,6 +1438,8 @@ export class CrossSectionViewer {
     }
 
     if (this._renderer) { this._renderer.dispose(); this._renderer = null; }
+
+    if (this._leaderSvg) { this._leaderSvg.remove(); this._leaderSvg = null; }
 
     this._scene       = null;
     this._camera      = null;
