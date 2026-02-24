@@ -451,7 +451,6 @@ export class CrossSectionViewer {
     this._clipPlane2     = null;
     this._layerMeshes    = [];
     this._faceMeshes     = [];
-    this._boundaryRings  = [];
     this._starfield      = null;
     this._coreLight      = null;
     this._coreLightBlue  = null;
@@ -460,8 +459,9 @@ export class CrossSectionViewer {
 
     // Camera: nearly equatorial so the cut face (+X half-circle) fills the viewport.
     // Small +X offset keeps the exterior dome visible alongside the cut face.
-    this._camStart = new THREE.Vector3(2.5, 0.6, 5.0);
-    this._camEnd   = new THREE.Vector3(1.0, 0.2, 3.2);
+    // Camera ~42° off face-normal: face disc visible at ~74% width, 3D dome depth preserved
+    this._camStart = new THREE.Vector3(6.0, 1.5, 5.0);
+    this._camEnd   = new THREE.Vector3(2.0, 0.3, 1.8);
 
     // Color dot indicators (replacing numbered badges)
     this._colorDots = [];
@@ -572,11 +572,6 @@ export class CrossSectionViewer {
     this._activeLayerIndex = -1;
     this._expandTarget    = [];
     this._expandCurrent   = [];
-    this._expandZTarget   = [];
-    this._expandZCurrent  = [];
-    this._baseZOffsets    = [];
-    this._hoverLayerIdx   = -1;
-    this._autoExplodeDone = false;
 
     // Remove all color dot elements
     for (const d of this._colorDots) d.remove();
@@ -650,9 +645,6 @@ export class CrossSectionViewer {
     const maxR = layers[0].r;
     this._layerMeshes   = [];
     this._faceMeshes    = [];
-    this._boundaryRings = [];
-    this._expandTarget  = []; // target x-offset for each layer (0 = resting, 0.22 = expanded)
-    this._expandCurrent = []; // current lerped x-offset for each layer
 
     // ── Starfield ──
     this._starfield = this._buildStarfield();
@@ -718,11 +710,6 @@ export class CrossSectionViewer {
     // Initialise expansion state arrays now that _layerMeshes is fully populated
     this._expandTarget    = new Array(this._layerMeshes.length).fill(0);
     this._expandCurrent   = new Array(this._layerMeshes.length).fill(0);
-    this._expandZTarget   = new Array(this._layerMeshes.length).fill(0);
-    this._expandZCurrent  = new Array(this._layerMeshes.length).fill(0);
-    this._baseZOffsets    = new Array(this._layerMeshes.length).fill(0);
-    this._autoExplodeDone = false;
-    this._hoverLayerIdx   = -1;
 
     // ── Cut-face disc ──
     // Full circle at x=0.002, facing +X (toward camera).
@@ -737,23 +724,6 @@ export class CrossSectionViewer {
     faceMesh.rotation.y = Math.PI / 2; // +Z face → face +X toward camera ✓
     faceMesh.position.x = 0.002;
     this._faceMeshes.push(faceMesh);
-
-    // ── Layer boundary rings (color-coded halos on the cut face) ──
-    // Placed in the YZ plane (rotation.y = PI/2) at x=0.005 — in front of the
-    // face disc (x=0.002) so they appear as bright ring outlines.
-    // Uses the LAYER_COLORS palette for visual cohesion with sidebar cards.
-    for (let i = 0; i < layers.length; i++) {
-      const radius = layers[i].r / maxR;
-      const palColor = getLayerColor(i, layers.length);
-      const col = new THREE.Color(palColor);
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(radius, 0.007, 8, 96),
-        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85 }),
-      );
-      ring.rotation.y = Math.PI / 2;
-      ring.position.x = 0.005;
-      this._boundaryRings.push(ring);
-    }
 
     // ── Core glow lights (warm amber key + cool blue-white fill) ──
     this._coreLight     = new THREE.PointLight(0xff8c00, 0, 3.0, 1.8); // amber
@@ -803,7 +773,7 @@ export class CrossSectionViewer {
 
     // ── Sphere group (for scale-in animation) ──
     this._sphereGroup = new THREE.Group();
-    for (const m of [...this._layerMeshes, ...this._faceMeshes, ...this._boundaryRings]) {
+    for (const m of [...this._layerMeshes, ...this._faceMeshes]) {
       this._sphereGroup.add(m);
     }
     this._sphereGroup.add(this._coreParticles);
@@ -929,54 +899,6 @@ export class CrossSectionViewer {
     // ── Update dot positions every frame ──
     if (this._colorDots.length > 0 && this._renderer && this._camera) {
       this._updateDotPositions();
-    }
-
-    // ── Phase 4: Auto-explode layers along Z toward camera (3.2 s+) ──
-    // Spacing capped so total spread ≤ 0.40 units (sphere radius = 1).
-    if (elapsed > 3.2 && !this._autoExplodeDone && this._currentLayers) {
-      const n = this._currentLayers.length;
-      for (let i = 0; i < n; i++) {
-        const innerOrder = n - 1 - i; // 0 = outermost, n-1 = innermost
-        const spacing = Math.min(0.10, 0.40 / Math.max(n - 1, 1));
-        this._baseZOffsets[i] = innerOrder * spacing;
-      }
-      this._autoExplodeDone = true;
-    }
-
-    // ── Layer Z-explosion lerp + hover scale ──
-    if (this._expandZTarget && this._expandZCurrent) {
-      for (let i = 0; i < this._layerMeshes.length; i++) {
-        const hoverBoost = (i === this._hoverLayerIdx) ? 0.12 : 0;
-        this._expandZTarget[i] = (this._baseZOffsets[i] || 0) + hoverBoost;
-        this._expandZCurrent[i] += (this._expandZTarget[i] - this._expandZCurrent[i]) * 0.055;
-        this._layerMeshes[i].position.z = this._expandZCurrent[i];
-        // Hover: subtle scale emphasis
-        const hovScale = (i === this._hoverLayerIdx) ? 1.04 : 1.0;
-        this._layerMeshes[i].scale.setScalar(hovScale);
-      }
-    }
-
-    // ── Fade outer shells progressively as inner layers float forward ──
-    if (this._layerMeshes.length > 1 && this._autoExplodeDone) {
-      const innerZ = this._expandZCurrent[this._layerMeshes.length - 1] || 0;
-      const maxZ   = this._baseZOffsets[this._layerMeshes.length - 1] || 0.01;
-      const spread = Math.min(innerZ / maxZ, 1.0);
-      for (let i = 0; i < this._layerMeshes.length - 1; i++) {
-        const mat = this._layerMeshes[i].material;
-        if (!mat.transparent) { mat.transparent = true; mat.needsUpdate = true; }
-        const depth = i / Math.max(this._layerMeshes.length - 1, 1);
-        mat.opacity = Math.max(0.45, 1.0 - spread * (0.45 - depth * 0.12));
-      }
-    }
-
-    // ── Boundary rings: pulse after cut settles ──
-    if (elapsed > 2.5 && this._boundaryRings) {
-      for (let i = 0; i < this._boundaryRings.length; i++) {
-        const ring = this._boundaryRings[i];
-        if (ring?.material) {
-          ring.material.opacity = 0.40 + 0.58 * Math.abs(Math.sin(elapsed * 1.35 + i * 0.70));
-        }
-      }
     }
 
     // ── Innermost core: dramatic pulsing glow after explosion settles ──
@@ -1284,12 +1206,6 @@ export class CrossSectionViewer {
         dot.classList.remove('glow');
       }
     }
-    // Boost emissive of the matching boundary ring + layer glow
-    const ring = this._boundaryRings[index];
-    if (ring) {
-      ring.material.opacity = entering ? 1.0 : 0.85;
-    }
-
     // Highlight layer in 3D with glow effect
     if (this._layerMeshes[index] && this._activeLayerIndex < 0) {
       const mat = this._layerMeshes[index].material;
@@ -1302,8 +1218,6 @@ export class CrossSectionViewer {
       mat.emissiveIntensity = 1.0;
     }
 
-    // Track hover layer index — Z boost is applied in _tick via _hoverLayerIdx
-    this._hoverLayerIdx = (entering && this._activeLayerIndex < 0) ? index : -1;
   }
 
   _highlightLayer(index) {
@@ -1461,9 +1375,8 @@ export class CrossSectionViewer {
 
   _disposeThree() {
     for (const mesh of [
-      ...(this._layerMeshes   || []),
-      ...(this._faceMeshes    || []),
-      ...(this._boundaryRings || []),
+      ...(this._layerMeshes || []),
+      ...(this._faceMeshes  || []),
     ]) {
       mesh.geometry?.dispose();
       if (mesh.material) {
@@ -1471,9 +1384,8 @@ export class CrossSectionViewer {
         mesh.material.dispose();
       }
     }
-    this._layerMeshes   = [];
-    this._faceMeshes    = [];
-    this._boundaryRings = [];
+    this._layerMeshes = [];
+    this._faceMeshes  = [];
 
     if (this._starfield) {
       this._starfield.geometry?.dispose();
