@@ -831,10 +831,12 @@ export class SolarSystemScene {
           shader.fragmentShader = shader.fragmentShader.replace(
             '#include <normal_fragment_maps>',
             `#include <normal_fragment_maps>
+            #ifdef USE_UV
             if (uDetailBlend > 0.001) {
               vec3 detailN = texture2D(uDetailNormal, vUv * 48.0).xyz * 2.0 - 1.0;
               normal = normalize(normal + vec3(detailN.x, detailN.y, 0.0) * uDetailBlend * 0.5);
-            }`
+            }
+            #endif`
           );
           planetMat.userData.detailShader = shader;
         };
@@ -1294,10 +1296,12 @@ export class SolarSystemScene {
           shader.fragmentShader = shader.fragmentShader.replace(
             '#include <normal_fragment_maps>',
             `#include <normal_fragment_maps>
+            #ifdef USE_UV
             if (uDetailBlend > 0.001) {
               vec3 detailN = texture2D(uDetailNormal, vUv * 48.0).xyz * 2.0 - 1.0;
               normal = normalize(normal + vec3(detailN.x, detailN.y, 0.0) * uDetailBlend * 0.5);
-            }`
+            }
+            #endif`
           );
           planetMat.userData.detailShader = shader;
         };
