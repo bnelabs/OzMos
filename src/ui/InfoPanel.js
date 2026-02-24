@@ -46,42 +46,25 @@ export function renderCompactPlanetInfo(key) {
   const data = getLocalizedPlanet(key);
   if (!data) return '';
 
-  let stats = '';
-  if (key === 'sun') {
-    stats += compactStat(t('stat.surfaceTemp'), data.temperature);
-    stats += compactStat(t('stat.mass'), data.mass);
-    stats += compactStat(t('stat.age'), data.age);
-    stats += compactStat(t('stat.luminosity'), data.luminosity);
-  } else {
-    stats += compactStat(t('stat.mass'), `${data.massEarths} ${t('unit.earthMass')}`);
-    stats += compactStat(t('stat.temperature'), data.temperature);
-    stats += compactStat(t('stat.distance'), data.distanceFromSun);
-    stats += compactStat(t('stat.gravity'), data.gravity);
-  }
+  // Truncate tagline to 100 chars
+  const rawTagline = data.tagline || '';
+  const tagline = rawTagline.length > 100 ? rawTagline.slice(0, 100) + '...' : rawTagline;
 
-  let cutawayBtn = '';
-  if (PLANET_LAYERS[key]) {
-    cutawayBtn = `<button class="cs-btn compact-cs-btn" id="cutaway-btn" data-planet="${escapeHTML(key)}">
-      ${escapeHTML(t('cs.viewInterior'))}
-    </button>`;
-  }
-
-  const flybyBtn = `<button class="flyby-btn compact-flyby-btn" id="flyby-btn" data-planet="${escapeHTML(key)}">
-    ${escapeHTML(t('flyby.start') || '🚀 Flyby')}
-  </button>`;
+  // First fun fact or fallback
+  const funFact = (data.funFacts && data.funFacts.length > 0)
+    ? data.funFacts[0]
+    : 'An extraordinary world waiting to be explored.';
 
   return `
-    <div class="info-compact">
-      <div class="info-compact-header">
-        <div class="info-planet-thumb" data-thumb-planet="${escapeHTML(key)}" style="background-color: ${'#' + ((data.color ?? 0x888888) >>> 0).toString(16).padStart(6, '0')};"></div>
-        <div>
-          <h1>${escapeHTML(data.name)}</h1>
-          <span class="subtitle">${escapeHTML(data.type)}</span>
-        </div>
+    <div class="compact-info">
+      <h2 class="planet-name">${escapeHTML(data.name)}</h2>
+      <p class="planet-type">${escapeHTML(data.type)}</p>
+      <p class="compact-tagline">${escapeHTML(tagline)}</p>
+      <div class="did-you-know">
+        <span class="dyk-label">${escapeHTML(t('info.didYouKnow') || 'Did you know?')}</span>
+        <p class="dyk-fact">${sanitizeHTML(funFact)}</p>
       </div>
-      <div class="info-compact-stats">${stats}</div>
-      <div class="info-compact-actions">${cutawayBtn}${flybyBtn}</div>
-      <button class="info-toggle-btn" id="info-show-more">${escapeHTML(t('info.showMore') || 'More details')} &#x203A;</button>
+      <button class="scan-btn" id="scan-btn" data-key="${escapeHTML(key)}">${escapeHTML(t('info.scan') || 'Scan ▶')}</button>
     </div>`;
 }
 

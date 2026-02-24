@@ -196,6 +196,9 @@ export const ui_en = {
   // Info panel toggle
   'info.showMore': 'More details',
   'info.showLess': 'Show less',
+  'info.scan': 'Scan ▶',
+  'info.scanning': 'Scanning…',
+  'info.didYouKnow': 'Did you know?',
 
   // Cross-section / Cutaway (legacy keys kept for any remaining references)
   'cutaway.show': 'Show Cross-Section',

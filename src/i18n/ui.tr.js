@@ -196,6 +196,9 @@ export const ui_tr = {
   // Info panel toggle
   'info.showMore': 'Daha fazlası',
   'info.showLess': 'Daha az',
+  'info.scan': 'Tara ▶',
+  'info.scanning': 'Taranıyor…',
+  'info.didYouKnow': 'Biliyor musunuz?',
 
   // Cross-section / Cutaway (eski anahtarlar)
   'cutaway.show': 'Kesiti Göster',

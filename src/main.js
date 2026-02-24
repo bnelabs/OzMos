@@ -1095,6 +1095,17 @@ function wireCompactHandlers(key) {
     }
   }
 
+  // Wire scan button
+  const scanBtn = document.getElementById('scan-btn');
+  if (scanBtn) {
+    scanBtn.addEventListener('click', () => {
+      scanBtn.disabled = true;
+      scanBtn.textContent = 'Scanning…';
+      scanBtn.classList.add('scanning');
+      setTimeout(() => expandInfoPanel(key), 1200);
+    });
+  }
+
   // Wire cross-section viewer button in compact view
   const cutawayBtn = document.getElementById('cutaway-btn');
   if (cutawayBtn) {

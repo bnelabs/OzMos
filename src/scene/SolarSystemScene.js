@@ -51,6 +51,24 @@ import {
 } from '../textures/proceduralTextures.js';
 import { loadAllTextures } from '../textures/textureLoader.js';
 
+const orbitGlowVS = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+const orbitGlowFS = `
+uniform vec3 uColor;
+uniform float uOpacity;
+varying vec2 vUv;
+void main() {
+  float center = 1.0 - abs(vUv.x - 0.5) * 2.0;
+  float glow = pow(center, 2.0) * uOpacity;
+  gl_FragColor = vec4(uColor, glow);
+}
+`;
+
 const TEXTURE_GENERATORS = {
   mercury: generateMercuryTexture,
   venus: generateVenusTexture,
@@ -1056,6 +1074,34 @@ export class SolarSystemScene {
       orbitLine.rotation.x = THREE.MathUtils.degToRad(planetData.orbitInclination || 0);
       this.scene.add(orbitLine);
       this.orbitLines[key] = orbitLine;
+
+      // Orbit glow tube (desktop only)
+      if (this._quality === 'high') {
+        const glowPoints = [];
+        for (let i = 0; i <= 128; i++) {
+          const angle = (i / 128) * Math.PI * 2;
+          glowPoints.push(new THREE.Vector3(Math.cos(angle) * planetData.orbitRadius, 0, Math.sin(angle) * planetData.orbitRadius));
+        }
+        const glowCurve = new THREE.CatmullRomCurve3(glowPoints, true);
+        const glowGeo = new THREE.TubeGeometry(glowCurve, 128, 0.06, 4, true);
+        const glowMat = new THREE.ShaderMaterial({
+          vertexShader: orbitGlowVS,
+          fragmentShader: orbitGlowFS,
+          uniforms: {
+            uColor: { value: new THREE.Color(0x4488cc) },
+            uOpacity: { value: 0.0 },
+          },
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const glowTube = new THREE.Mesh(glowGeo, glowMat);
+        glowTube.rotation.x = THREE.MathUtils.degToRad(planetData.orbitInclination || 0);
+        this.scene.add(glowTube);
+        if (!this.orbitGlows) this.orbitGlows = {};
+        this.orbitGlows[key] = glowTube;
+      }
     }
   }
 
@@ -1876,6 +1922,20 @@ export class SolarSystemScene {
         const pData = SOLAR_SYSTEM[key] || DWARF_PLANETS[key] || ASTEROIDS[key];
         const radius = pData ? pData.displayRadius : 1;
         orbitLine.material.opacity = 0.15 * THREE.MathUtils.clamp(camDist / (radius * 15), 0, 1);
+      }
+    }
+
+    // Orbit glow proximity fade
+    if (this.orbitGlows && this._quality === 'high') {
+      for (const key of planetKeys) {
+        const glowTube = this.orbitGlows[key];
+        if (!glowTube) continue;
+        const pData = SOLAR_SYSTEM[key];
+        if (!pData) continue;
+        const planetWorldPos = this.getPlanetWorldPosition(key);
+        const camDist = this.camera.position.distanceTo(planetWorldPos);
+        const targetOpacity = THREE.MathUtils.clamp(1 - camDist / (pData.displayRadius * 25), 0, 0.4);
+        glowTube.material.uniforms.uOpacity.value += (targetOpacity - glowTube.material.uniforms.uOpacity.value) * 0.05;
       }
     }
 
