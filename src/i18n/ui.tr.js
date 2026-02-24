@@ -1119,4 +1119,13 @@ export const ui_tr = {
   'layer.charon.rockyCore.pressureRange': '1 – 3 GPa',
   'layer.charon.rockyCore.state': 'Katı (kaya)',
   'layer.charon.rockyCore.funFact': 'Charon ve Plüton boyut olarak birbirine o kadar yakındır ki bazen çift cüce gezegen sistemi olarak anılırlar.',
+
+  'tour.selectStory': 'Yolculuk Seç',
+  'tour.water': 'Suyu Takip Et',
+  'tour.rocky': 'Kayalık Dünyalar',
+  'tour.giants': 'Gaz Devleri',
+  'tour.fullTour': 'Tam Tur',
+  'lightspeed.toggle': 'Işık Hızı',
+  'lightspeed.title': 'Güneş\'ten Işık Hızı',
+  'lightspeed.minutes': 'dakika',
 };

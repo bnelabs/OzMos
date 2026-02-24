@@ -133,6 +133,7 @@
         <button id="btn-fullscreen" class="nav-btn nav-btn--media" title="Fullscreen" aria-label="Toggle Fullscreen" data-i18n-aria="aria.fullscreen">&#x26F6;</button>
         <button id="btn-zen" aria-pressed="false" title="Zen Mode (Z)" class="nav-btn">Zen</button>
         <button id="btn-realistic" aria-pressed="false" title="Realistic Lighting" class="nav-btn">Lighting</button>
+        <button id="btn-lightspeed" title="Speed of Light Mode (L)" class="nav-btn">Light Speed</button>
       </div>
     </div>
 
@@ -417,6 +418,37 @@
           </ul>
         </section>
       </div>
+    </div>
+  </div>
+
+
+  <!-- Tour Story Selector Modal -->
+  <div id="tour-story-modal" class="story-modal" role="dialog" aria-modal="true" aria-labelledby="story-modal-title" hidden>
+    <div class="story-modal-content">
+      <h2 id="story-modal-title">Choose Your Journey</h2>
+      <div class="story-cards">
+        <button class="story-card" data-story="water">
+          <span class="story-icon">&#128167;</span>
+          <span class="story-title">Follow the Water</span>
+          <span class="story-stops">4 stops</span>
+        </button>
+        <button class="story-card" data-story="rocky">
+          <span class="story-icon">&#129704;</span>
+          <span class="story-title">Rocky Worlds</span>
+          <span class="story-stops">4 stops</span>
+        </button>
+        <button class="story-card" data-story="giants">
+          <span class="story-icon">&#127744;</span>
+          <span class="story-title">Gas Giants</span>
+          <span class="story-stops">4 stops</span>
+        </button>
+        <button class="story-card story-card-full" data-story="">
+          <span class="story-icon">&#9728;&#65039;</span>
+          <span class="story-title">Full Tour</span>
+          <span class="story-stops">All planets</span>
+        </button>
+      </div>
+      <button id="story-modal-close" class="story-modal-close">&#x2715;</button>
     </div>
   </div>
 

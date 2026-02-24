@@ -33,61 +33,74 @@ export class CMEFluxRope {
   }
 
   _createRope() {
-    const tubeLength = this._currentLength;
-    const helixTurns = 3;
-    const helixRadius = 1.5;
+    const segments = 200;
+    const turns = 3;
+    const maxExpansion = this._currentLength; // expands over time
 
     const points = [];
-    const segments = 120;
-
-    // Build perpendicular basis vectors for helix offset
-    const dir = this._direction;
-    const perp1 = new THREE.Vector3(-dir.z, 0, dir.x);
-    if (perp1.lengthSq() < 0.001) perp1.set(0, 1, 0);
-    perp1.normalize();
-    const perp2 = new THREE.Vector3().crossVectors(dir, perp1).normalize();
-
     for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
-      // Main axis progress along direction
+      const t = i / segments; // 0 → 1
+
+      // Main arc: parabolic, bowing outward from sun
+      // radialDist goes from 0 to maxExpansion * 2 (distance from start along direction)
+      const radialDist = t * maxExpansion * 2;
+      // arcHeight: rises then falls back (croissant cross-section arc)
+      const arcHeight = Math.sin(t * Math.PI) * maxExpansion * 0.4;
+
+      // Helix radius expands from tight bundle to wider flux rope
+      const helixRadius = 0.1 + t * maxExpansion * 0.15;
+
+      // Helix angle
+      const helixAngle = t * Math.PI * 2 * turns;
+
+      // Build position along the main propagation direction
+      // Use perpendicular basis for helix offsets
+      const dir = this._direction;
+      const perp1 = new THREE.Vector3(-dir.z, 0, dir.x);
+      if (perp1.lengthSq() < 0.001) perp1.set(0, 1, 0);
+      perp1.normalize();
+      const perp2 = new THREE.Vector3().crossVectors(dir, perp1).normalize();
+
+      // Main axis position: start at sun surface offset + parabolic arc
       const axisPos = this._startPos.clone()
-        .addScaledVector(this._direction, t * tubeLength + 6); // start at sun surface
+        .addScaledVector(this._direction, radialDist + 6); // +6 offset from sun surface
 
-      // Helical twist
-      const angle = t * helixTurns * Math.PI * 2;
-      const helixOffset = perp1.clone().multiplyScalar(Math.cos(angle) * helixRadius * (1 + t * 0.5))
-        .addScaledVector(perp2, Math.sin(angle) * helixRadius * (1 + t * 0.5));
+      // Add arc height (perpendicular lift for croissant bow)
+      axisPos.addScaledVector(perp2, arcHeight);
 
-      axisPos.add(helixOffset);
+      // Add helix wrapping around the arc axis
+      axisPos.addScaledVector(perp1, Math.cos(helixAngle) * helixRadius);
+      axisPos.addScaledVector(perp2, Math.sin(helixAngle) * helixRadius);
+
       points.push(axisPos);
     }
 
     const curve = new THREE.CatmullRomCurve3(points);
-    const tubeGeo = new THREE.TubeGeometry(curve, 80, 0.4, 8, false);
+    const geometry = new THREE.TubeGeometry(curve, segments, 0.12, 8, false);
 
-    // Color: gradient from bright orange (sun end) to cool blue (outer end)
-    const colors = new Float32Array(tubeGeo.attributes.position.count * 3);
-    for (let i = 0; i < tubeGeo.attributes.position.count; i++) {
-      const t = i / tubeGeo.attributes.position.count;
-      colors[i * 3] = THREE.MathUtils.lerp(1.0, 0.1, t);     // R: orange to dark
-      colors[i * 3 + 1] = THREE.MathUtils.lerp(0.4, 0.3, t); // G
-      colors[i * 3 + 2] = THREE.MathUtils.lerp(0.0, 0.8, t); // B: dark to blue
+    // Color gradient from orange (inner) to blue (outer) via vertex colors
+    const colors = [];
+    const posArray = geometry.attributes.position.array;
+    for (let i = 0; i < posArray.length; i += 3) {
+      const t = i / posArray.length;
+      colors.push(1.0, 0.4 + t * 0.2, t * 0.5); // orange → blue-orange
     }
-    tubeGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-    const mat = new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.8,
       side: THREE.DoubleSide,
     });
 
     if (this._mesh) {
       this._scene.remove(this._mesh);
       this._mesh.geometry.dispose();
+      this._mesh.material.dispose();
     }
 
-    this._mesh = new THREE.Mesh(tubeGeo, mat);
+    this._mesh = new THREE.Mesh(geometry, material);
     this._scene.add(this._mesh);
   }
 

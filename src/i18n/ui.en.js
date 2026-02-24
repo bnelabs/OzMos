@@ -1125,4 +1125,13 @@ export const ui_en = {
   'layer.charon.rockyCore.pressureRange': '1 – 3 GPa',
   'layer.charon.rockyCore.state': 'Solid (rock)',
   'layer.charon.rockyCore.funFact': 'Charon and Pluto are so similar in size they are sometimes called a double dwarf planet system.',
+
+  'tour.selectStory': 'Choose Journey',
+  'tour.water': 'Follow the Water',
+  'tour.rocky': 'Rocky Worlds',
+  'tour.giants': 'Gas Giants',
+  'tour.fullTour': 'Full Tour',
+  'lightspeed.toggle': 'Light Speed',
+  'lightspeed.title': 'Speed of Light from Sun',
+  'lightspeed.minutes': 'minutes',
 };

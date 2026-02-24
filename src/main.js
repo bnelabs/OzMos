@@ -1954,43 +1954,76 @@ if (missionClose) {
 
 // ==================== Cinematic Tour ====================
 
+function _initCinematicTour() {
+  if (!scene) return;
+  if (!cinematicTour) {
+    cinematicTour = new CinematicTour(scene);
+    cinematicTour.onPlanetVisit = (key) => {
+      openInfoPanel(key);
+      // Auto-open cross-section after camera settles
+      setTimeout(() => {
+        if (!cinematicTour?.isActive) return;
+        if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
+      }, 800);
+    };
+    cinematicTour.onPlanetLeave = () => disposeCutaway();
+    cinematicTour.onTourEnd = () => {
+      disposeCutaway();
+      btnTour.classList.remove('active');
+      closeInfoPanel();
+      audioManager.setContext('overview');
+    };
+  }
+}
+
 if (btnTour) {
   btnTour.addEventListener('click', () => {
     if (!scene) return;
-
-    if (!cinematicTour) {
-      cinematicTour = new CinematicTour(scene);
-      cinematicTour.onPlanetVisit = (key) => {
-        openInfoPanel(key);
-        // Auto-open cross-section after camera settles
-        setTimeout(() => {
-          if (!cinematicTour?.isActive) return;
-          if (crossSectionViewer) { sfx?.playCrossSectionOpen(); crossSectionViewer.open(key); }
-        }, 800);
-      };
-      cinematicTour.onPlanetLeave = () => disposeCutaway();
-      cinematicTour.onTourEnd = () => {
-        disposeCutaway();
-        btnTour.classList.remove('active');
-        closeInfoPanel();
-        audioManager.setContext('overview');
-      };
-    }
-
-    const active = cinematicTour.toggle();
-    btnTour.classList.toggle('active', active);
-
-    if (active) {
-      sfx?.playTourChime();
-      // Trigger epic music for tour
-      audioManager.setContext('mission');
+    // Show story selector modal instead of starting tour directly
+    const modal = document.getElementById('tour-story-modal');
+    if (modal) {
+      modal.hidden = false;
     } else {
-      disposeCutaway();
-      audioManager.setContext('overview');
-      closeInfoPanel();
+      // Fallback: toggle tour directly
+      _initCinematicTour();
+      const active = cinematicTour.toggle();
+      btnTour.classList.toggle('active', active);
+      if (active) {
+        sfx?.playTourChime();
+        audioManager.setContext('mission');
+      } else {
+        disposeCutaway();
+        audioManager.setContext('overview');
+        closeInfoPanel();
+      }
     }
   });
 }
+
+document.getElementById('story-modal-close')?.addEventListener('click', () => {
+  const modal = document.getElementById('tour-story-modal');
+  if (modal) modal.hidden = true;
+});
+
+document.querySelectorAll('.story-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const storyId = card.dataset.story || null;
+    const modal = document.getElementById('tour-story-modal');
+    if (modal) modal.hidden = true;
+    if (!scene) return;
+    _initCinematicTour();
+    // If tour is already active, stop it first
+    if (cinematicTour.isActive) {
+      cinematicTour.stop();
+      disposeCutaway();
+      closeInfoPanel();
+    }
+    cinematicTour.start(storyId || undefined);
+    btnTour.classList.add('active');
+    sfx?.playTourChime();
+    audioManager.setContext('mission');
+  });
+});
 
 // ==================== Solar Storm ====================
 
@@ -2220,6 +2253,19 @@ function toggleZenMode() {
   }
 }
 
+// ==================== Light Speed Mode ====================
+
+function toggleLightSpeed() {
+  if (!scene) return;
+  if (scene._lightSpeedActive) {
+    scene.stopLightSpeedMode();
+  } else {
+    scene.startLightSpeedMode();
+  }
+}
+
+document.getElementById('btn-lightspeed')?.addEventListener('click', toggleLightSpeed);
+
 // ==================== Keyboard Shortcuts ====================
 
 function toggleKeyboardHelp() {
@@ -2311,6 +2357,9 @@ document.addEventListener('keydown', (e) => {
 
   // Z key — toggle zen mode
   if (e.key === 'z' || e.key === 'Z') { toggleZenMode(); return; }
+
+  // L key — toggle speed of light mode
+  if (e.key === 'l' || e.key === 'L') { toggleLightSpeed(); return; }
 
   // Number keys 1-9 for planets
   const num = parseInt(e.key, 10);

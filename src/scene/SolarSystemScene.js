@@ -31,6 +31,7 @@ import {
   atmosphereVertexShader, atmosphereFragmentShader,
   ringVertexShader, ringFragmentShader,
   cityLightsVertexShader, cityLightsFragmentShader,
+  gasGiantVertexShader, gasGiantFragmentShader,
 } from '../shaders/atmosphereShader.js';
 import { getPlanetHeliocentricAU, getCurrentDateStr, dateToJulian, julianToDateStr } from './OrbitalMechanics.js';
 import { AsteroidBelt } from './AsteroidBelt.js';
@@ -645,14 +646,40 @@ export class SolarSystemScene {
           metalness: pbr.metalness,
         });
       } else if (TEXTURE_GENERATORS[key]) {
-        const canvas = TEXTURE_GENERATORS[key](1024);
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.colorSpace = THREE.SRGBColorSpace;
-        planetMat = new THREE.MeshStandardMaterial({
-          map: texture,
-          roughness: pbr.roughness,
-          metalness: pbr.metalness,
-        });
+        if (['jupiter', 'saturn', 'uranus', 'neptune'].includes(key) && this._quality === 'high') {
+          // Animated gas giant shader — latitude-band scrolling with limb darkening
+          const texCanvas = TEXTURE_GENERATORS[key](1024);
+          const diffuseTex = new THREE.CanvasTexture(texCanvas);
+          diffuseTex.colorSpace = THREE.SRGBColorSpace;
+
+          const BAND_VELOCITIES = {
+            jupiter: [1.0, -0.8, 0.9, -1.0, 0.7, -0.9, 1.0, -0.8],
+            saturn:  [0.4, -0.3, 0.35, -0.4, 0.3, -0.35, 0.4, -0.3],
+            uranus:  [0.2, -0.15, 0.18, -0.2, 0.15, -0.18, 0.2, -0.15],
+            neptune: [0.25, -0.2, 0.22, -0.25, 0.2, -0.22, 0.25, -0.2],
+          };
+
+          planetMat = new THREE.ShaderMaterial({
+            vertexShader: gasGiantVertexShader,
+            fragmentShader: gasGiantFragmentShader,
+            uniforms: {
+              tDiffuse: { value: diffuseTex },
+              uTime: { value: 0 },
+              uBandVelocities: { value: BAND_VELOCITIES[key] || [0,0,0,0,0,0,0,0] },
+            },
+          });
+          if (!this._gasGiantMaterials) this._gasGiantMaterials = {};
+          this._gasGiantMaterials[key] = planetMat;
+        } else {
+          const canvas = TEXTURE_GENERATORS[key](1024);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          planetMat = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: pbr.roughness,
+            metalness: pbr.metalness,
+          });
+        }
       } else {
         planetMat = new THREE.MeshStandardMaterial({
           color: planetData.color,
@@ -747,6 +774,8 @@ export class SolarSystemScene {
             uIntensity: { value: atm.intensity },
             uSunPosition: { value: new THREE.Vector3(0, 0, 0) },
             uThickness: { value: atm.thickness },
+            uTerminatorWidth: { value: 0.12 },
+            uSunsetColor: { value: new THREE.Color(1.0, 0.4, 0.1) },
           },
           transparent: true,
           side: THREE.BackSide,
@@ -920,13 +949,21 @@ export class SolarSystemScene {
         const ringCanvas = generateRingTexture(1024);
         ringTexture = new THREE.CanvasTexture(ringCanvas);
       }
-      ringMat = new THREE.MeshBasicMaterial({
-        map: ringTexture,
+      ringMat = new THREE.ShaderMaterial({
+        vertexShader: ringVertexShader,
+        fragmentShader: ringFragmentShader,
+        uniforms: {
+          uRingTexture: { value: ringTexture },
+          uSunPosition: { value: new THREE.Vector3(0, 0, 0) },
+          uCameraPos: { value: new THREE.Vector3() },
+          uPlanetPosition: { value: new THREE.Vector3() },
+          uPlanetRadius: { value: planetData.displayRadius },
+        },
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
-        opacity: 0.85,
       });
+      this._saturnRingMat = ringMat;
     } else if (key === 'neptune') {
       // Neptune has five narrow, faint rings — Adams (brightest), Le Verrier, Galle, Lassell, Arago
       const nepCanvas = document.createElement('canvas');
@@ -1510,6 +1547,52 @@ export class SolarSystemScene {
     this.animationSpeed = speed;
   }
 
+  startLightSpeedMode() {
+    if (this._lightSpeedActive) return;
+    this._lightSpeedActive = true;
+    this._lightSpeedStart = performance.now();
+    this._savedTimeScale = this.animationSpeed;
+    this.animationSpeed = 0;
+
+    // Create expanding light ring
+    const ringGeo = new THREE.RingGeometry(0.1, 0.3, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffffcc,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this._lightRing = new THREE.Mesh(ringGeo, ringMat);
+    this._lightRing.rotation.x = Math.PI / 2;
+    this.scene.add(this._lightRing);
+
+    // HUD overlay
+    const hud = document.createElement('div');
+    hud.id = 'lightspeed-hud';
+    hud.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,10,0.85);border:1px solid rgba(255,255,150,0.4);border-radius:12px;padding:16px 24px;color:#ffffcc;font-family:monospace;font-size:0.85rem;z-index:800;text-align:center;pointer-events:none;';
+    hud.innerHTML = '<div style="font-size:1rem;font-weight:bold;margin-bottom:8px;">Speed of Light from Sun</div><div id="lightspeed-status">Light departing...</div><div style="margin-top:8px;font-size:0.75rem;color:#aaa;">Mercury 3.2 min | Earth 8.3 min | Mars 12.6 min | Jupiter 43 min | Saturn 79 min</div>';
+    document.body.appendChild(hud);
+    this._lightSpeedHud = hud;
+  }
+
+  stopLightSpeedMode() {
+    if (!this._lightSpeedActive) return;
+    this._lightSpeedActive = false;
+    if (this._lightRing) {
+      this._lightRing.geometry.dispose();
+      this._lightRing.material.dispose();
+      this.scene.remove(this._lightRing);
+      this._lightRing = null;
+    }
+    if (this._lightSpeedHud) {
+      this._lightSpeedHud.remove();
+      this._lightSpeedHud = null;
+    }
+    this.animationSpeed = this._savedTimeScale || 1;
+  }
+
   toggleOrbits() {
     this.showOrbits = !this.showOrbits;
     Object.values(this.orbitLines).forEach(line => {
@@ -1844,9 +1927,44 @@ export class SolarSystemScene {
       }
     }
 
+    // Update ring phase scattering uniforms
+    if (this._saturnRingMat && this._saturnRingMat.uniforms) {
+      this._saturnRingMat.uniforms.uCameraPos.value.copy(this.camera.position);
+    }
+
     // Slowly rotate the sun for realism
     if (this.sun) {
       this.sun.rotation.y += 0.0003 * speed;
+    }
+
+    // Light speed ring animation
+    if (this._lightSpeedActive && this._lightRing) {
+      const elapsed_ls = (performance.now() - this._lightSpeedStart) / 1000; // seconds
+      // 1 AU = 36 scene units, 8.3 minutes realtime = 498 seconds
+      // Compress: 1 scene second = 16.6 realtime seconds (so 30s anim covers ~500s realtime)
+      const scaledTime = elapsed_ls * 16.6;
+      // Expand at 1 AU per 498 seconds: radius = (scaledTime / 498) * 36 scene units
+      const ringRadius = (scaledTime / 498) * 36;
+      this._lightRing.scale.set(ringRadius, ringRadius, 1);
+
+      // Fade opacity as it expands
+      this._lightRing.material.opacity = Math.max(0, 0.9 - ringRadius / 80);
+
+      // Update status text
+      const minutesElapsed = scaledTime / 60;
+      const statusEl = document.getElementById('lightspeed-status');
+      if (statusEl) {
+        let status = `Light has traveled for ${minutesElapsed.toFixed(1)} minutes`;
+        if (minutesElapsed >= 3.2 && minutesElapsed < 8.3) status += ' — passing Mercury';
+        else if (minutesElapsed >= 8.3 && minutesElapsed < 12.6) status += ' — reaching Earth';
+        else if (minutesElapsed >= 12.6 && minutesElapsed < 43) status += ' — passing Mars';
+        else if (minutesElapsed >= 43 && minutesElapsed < 79) status += ' — reaching Jupiter';
+        else if (minutesElapsed >= 79) status += ' — passing Saturn';
+        statusEl.textContent = status;
+      }
+
+      // Stop after 35 seconds
+      if (elapsed_ls > 35) this.stopLightSpeedMode();
     }
 
     // Advance simulation date and sync Keplerian positions
@@ -1876,6 +1994,15 @@ export class SolarSystemScene {
       if (this.moonMeshes[key]) {
         for (const moon of this.moonMeshes[key]) {
           moon.group.rotation.y += (moon.data.speed || 0.03) * delta * speed * 3;
+        }
+      }
+    }
+
+    // Update gas giant shader uniforms
+    if (this._gasGiantMaterials) {
+      for (const [gKey, mat] of Object.entries(this._gasGiantMaterials)) {
+        if (mat.uniforms && mat.uniforms.uTime) {
+          mat.uniforms.uTime.value = elapsed;
         }
       }
     }

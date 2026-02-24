@@ -13,42 +13,56 @@ export const atmosphereVertexShader = `
 `;
 
 export const atmosphereFragmentShader = `
-  varying vec3 vNormal;
-  varying vec3 vWorldPosition;
-  uniform vec3 uColor;
-  uniform float uIntensity;
-  uniform vec3 uSunPosition;
-  uniform float uThickness;
+uniform vec3 uSunPosition;
+uniform vec3 uColor;
+uniform float uThickness;
+uniform float uTerminatorWidth;
+uniform vec3 uSunsetColor;
+varying vec3 vNormal;
+varying vec3 vWorldPosition;
 
-  void main() {
-    vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-    vec3 sunDir = normalize(uSunPosition - vWorldPosition);
+void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+  vec3 sunDir = normalize(uSunPosition - vWorldPosition);
 
-    float fresnel = 1.0 - dot(vNormal, viewDir);
+  // Fresnel term — atmosphere visible at grazing angles
+  float fresnel = 1.0 - max(0.0, dot(normal, viewDir));
+  fresnel = pow(fresnel, 2.5);
 
-    // Rayleigh-inspired wavelength-dependent scattering
-    // Blue light scatters ~4x more than red (wavelength^-4 relationship)
-    float viewAngle = fresnel; // 0 = head-on, 1 = limb
-    float scatter = pow(viewAngle, max(1.5, 3.0 - uThickness));
+  // Sun-facing term for day/night
+  float sunFacing = dot(normal, sunDir);
 
-    vec3 baseColor = uColor;
-    // Shift toward blue at high scatter (limb), toward red at low scatter (horizon effect)
-    float blueShift = scatter * uThickness * 0.06;
-    float redShift = (1.0 - scatter) * 0.04;
-    vec3 scatteredColor = baseColor + vec3(-redShift * 0.3, 0.0, blueShift);
-    scatteredColor = clamp(scatteredColor, 0.0, 1.0);
+  // Rayleigh scatter — blue at zenith, more at limb
+  float scatter = pow(fresnel, 1.5) * uThickness;
 
-    float glow = scatter * uIntensity;
+  // Twilight terminator: bright strip at sunFacing ≈ 0
+  float terminator = smoothstep(-uTerminatorWidth, uTerminatorWidth, sunFacing);
+  float terminatorBand = 1.0 - abs(sunFacing) / uTerminatorWidth;
+  terminatorBand = clamp(terminatorBand, 0.0, 1.0) * step(-uTerminatorWidth * 0.5, sunFacing);
 
-    // Sun-facing side is brighter
-    float sunFacing = dot(vNormal, sunDir) * 0.5 + 0.5;
-    glow *= mix(0.05, 1.0, sunFacing);
+  // Crepuscular warm tint at terminator
+  float crepuscular = smoothstep(0.0, 0.2, sunFacing) * smoothstep(0.3, 0.05, sunFacing);
+  vec3 atmosphereColor = mix(uColor, uSunsetColor, crepuscular * 0.6);
+  atmosphereColor = mix(atmosphereColor, uColor * 1.5, terminatorBand * 0.3);
 
-    gl_FragColor = vec4(scatteredColor, glow * uThickness * 0.6);
-  }
+  // Day side scattering
+  float dayScatter = max(0.0, sunFacing) * scatter;
+
+  // Night side: very faint city lights / phosphorescence
+  float nightGlow = max(0.0, -sunFacing) * scatter * 0.05;
+
+  // Total alpha
+  float alpha = (dayScatter + nightGlow + terminatorBand * 0.15 * uThickness) * terminator;
+  // Atmospheric depth: thicker at grazing angles
+  alpha *= (0.5 + 0.5 * fresnel);
+  alpha = clamp(alpha, 0.0, 0.7);
+
+  gl_FragColor = vec4(atmosphereColor, alpha);
+}
 `;
 
-/** Ring shader for Saturn/Uranus/Neptune */
+/** Ring shader for Saturn — Henyey-Greenstein phase scattering */
 export const ringVertexShader = `
   varying vec2 vUv;
   varying vec3 vWorldPosition;
@@ -64,55 +78,48 @@ export const ringVertexShader = `
 `;
 
 export const ringFragmentShader = `
-  varying vec2 vUv;
-  varying vec3 vWorldPosition;
-  varying vec3 vNormal;
-  uniform vec3 uColor;
-  uniform float uInnerRadius;
-  uniform float uOuterRadius;
-  uniform vec3 uSunPosition;
-  uniform vec3 uPlanetPosition;
-  uniform float uPlanetRadius;
+uniform sampler2D uRingTexture;
+uniform vec3 uSunPosition;
+uniform vec3 uCameraPos;
+uniform vec3 uPlanetPosition;
+uniform float uPlanetRadius;
+varying vec2 vUv;
+varying vec3 vWorldPosition;
+varying vec3 vNormal;
 
-  void main() {
-    // Radial distance from center
-    float dist = length(vUv - 0.5) * 2.0;
+void main() {
+  // Sample ring texture (1D, u = radial distance inner→outer)
+  vec4 texColor = texture2D(uRingTexture, vec2(vUv.x, 0.5));
+  if (texColor.a < 0.01) discard;
 
-    // Ring pattern using radial bands
-    float r = (dist - 0.0) / 1.0;
-    float ringPattern = 0.0;
+  // Sun lighting from above/below
+  vec3 sunDir = normalize(uSunPosition - vWorldPosition);
+  float sunLight = max(dot(vec3(0.0, 1.0, 0.0), sunDir), 0.0) * 0.5 + 0.5;
 
-    // Multiple ring bands with varying opacity
-    ringPattern += smoothstep(0.15, 0.18, r) * (1.0 - smoothstep(0.20, 0.22, r)) * 0.3;
-    ringPattern += smoothstep(0.24, 0.26, r) * (1.0 - smoothstep(0.42, 0.44, r)) * 0.7;
-    ringPattern += smoothstep(0.46, 0.48, r) * (1.0 - smoothstep(0.52, 0.54, r)) * 0.5;
-    ringPattern += smoothstep(0.55, 0.56, r) * (1.0 - smoothstep(0.78, 0.82, r)) * 0.9;
-    ringPattern += smoothstep(0.84, 0.86, r) * (1.0 - smoothstep(0.92, 0.96, r)) * 0.4;
+  // Shadow from planet
+  vec3 toSun = normalize(uSunPosition - vWorldPosition);
+  vec3 toPlanet = uPlanetPosition - vWorldPosition;
+  float projDist = dot(toPlanet, toSun);
+  vec3 closestPoint = vWorldPosition + toSun * projDist;
+  float shadowDist = length(closestPoint - uPlanetPosition);
+  float shadow = smoothstep(uPlanetRadius * 0.8, uPlanetRadius * 1.2, shadowDist);
 
-    // Fine detail noise
-    float fineDetail = sin(r * 200.0) * 0.1 + 0.9;
-    ringPattern *= fineDetail;
+  // Phase angle between camera-ring-sun (Henyey-Greenstein)
+  vec3 toCamera = normalize(uCameraPos - vWorldPosition);
+  vec3 toSunDir = normalize(uSunPosition - vWorldPosition);
+  float cosPhase = dot(-toCamera, toSunDir);
 
-    // Sun lighting
-    vec3 sunDir = normalize(uSunPosition - vWorldPosition);
-    float sunLight = max(dot(vec3(0.0, 1.0, 0.0), sunDir), 0.0) * 0.5 + 0.5;
+  // Henyey-Greenstein phase function
+  float g = 0.6;
+  float phase = (1.0 - g * g) / pow(max(0.001, 1.0 + g * g - 2.0 * g * cosPhase), 1.5);
+  phase = phase / (4.0 * 3.14159);
 
-    // Shadow from planet
-    vec3 toSun = normalize(uSunPosition - vWorldPosition);
-    vec3 toPlanet = uPlanetPosition - vWorldPosition;
-    float projDist = dot(toPlanet, toSun);
-    vec3 closestPoint = vWorldPosition + toSun * projDist;
-    float shadowDist = length(closestPoint - uPlanetPosition);
-    float shadow = smoothstep(uPlanetRadius * 0.8, uPlanetRadius * 1.2, shadowDist);
+  // Normalize: phase ≈ 0.35 at g=0.6, cosPhase=0 (neutral)
+  float phaseNorm = clamp(phase * 4.0, 0.3, 2.5);
 
-    vec3 color = uColor * sunLight * shadow;
-    float alpha = ringPattern * 0.8;
-
-    // Fade at edges
-    alpha *= smoothstep(0.0, 0.15, r) * (1.0 - smoothstep(0.94, 1.0, r));
-
-    gl_FragColor = vec4(color, alpha);
-  }
+  vec3 finalColor = texColor.rgb * sunLight * shadow * phaseNorm;
+  gl_FragColor = vec4(finalColor, texColor.a * 0.85);
+}
 `;
 
 /** City lights shader — only visible on the night side */
@@ -145,4 +152,52 @@ export const cityLightsFragmentShader = `
     float nightMask = smoothstep(0.1, -0.1, sunFacing);
     gl_FragColor = vec4(city.rgb, city.r * nightMask);
   }
+`;
+
+/** Gas giant band animation shader (Jupiter, Saturn, Uranus, Neptune) */
+export const gasGiantVertexShader = `
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vWorldPosition;
+
+  void main() {
+    vUv = uv;
+    vNormal = normalize(normalMatrix * normal);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+export const gasGiantFragmentShader = `
+uniform sampler2D tDiffuse;
+uniform float uTime;
+uniform float uBandVelocities[8];
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vWorldPosition;
+
+void main() {
+  // Animate latitude bands at different speeds
+  float y = vUv.y;
+  float bandIndex = floor(y * 8.0);
+  int band = int(clamp(bandIndex, 0.0, 7.0));
+
+  float vel = 0.0;
+  if (band == 0) vel = uBandVelocities[0];
+  else if (band == 1) vel = uBandVelocities[1];
+  else if (band == 2) vel = uBandVelocities[2];
+  else if (band == 3) vel = uBandVelocities[3];
+  else if (band == 4) vel = uBandVelocities[4];
+  else if (band == 5) vel = uBandVelocities[5];
+  else if (band == 6) vel = uBandVelocities[6];
+  else vel = uBandVelocities[7];
+
+  // Offset UV x by band velocity * time
+  vec2 animUv = vec2(vUv.x + vel * uTime * 0.003, vUv.y);
+  animUv.x = fract(animUv.x);
+
+  vec4 texColor = texture2D(tDiffuse, animUv);
+  gl_FragColor = texColor;
+}
 `;
