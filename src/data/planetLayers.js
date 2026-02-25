@@ -23,7 +23,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.mercury.crust.funFact',
     },
     {
-      key: 'layer.mercury.mantle', color: '#8B6840', deepColor: '#6A4E2E', r: 129,
+      key: 'layer.mercury.mantle', color: '#8B6840', deepColor: '#6A4E2E', r: 138,
       compositionShort: 'layer.mercury.mantle.compositionShort',
       compositionFull: 'layer.mercury.mantle.compositionFull',
       thickness: 'layer.mercury.mantle.thickness',
@@ -33,7 +33,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.mercury.mantle.funFact',
     },
     {
-      key: 'layer.mercury.outerCore', color: '#D86C20', deepColor: '#A05010', r: 98,
+      key: 'layer.mercury.outerCore', color: '#D86C20', deepColor: '#A05010', r: 115,
       compositionShort: 'layer.mercury.outerCore.compositionShort',
       compositionFull: 'layer.mercury.outerCore.compositionFull',
       thickness: 'layer.mercury.outerCore.thickness',
@@ -43,7 +43,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.mercury.outerCore.funFact',
     },
     {
-      key: 'layer.mercury.innerCore', color: '#F0B828', deepColor: '#C09018', r: 34,
+      key: 'layer.mercury.innerCore', color: '#F0B828', deepColor: '#C09018', r: 40,
       compositionShort: 'layer.mercury.innerCore.compositionShort',
       compositionFull: 'layer.mercury.innerCore.compositionFull',
       thickness: 'layer.mercury.innerCore.thickness',
@@ -66,7 +66,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.venus.crust.funFact',
     },
     {
-      key: 'layer.venus.mantle', color: '#9A7038', deepColor: '#6E5028', r: 130,
+      key: 'layer.venus.mantle', color: '#9A7038', deepColor: '#6E5028', r: 139,
       compositionShort: 'layer.venus.mantle.compositionShort',
       compositionFull: 'layer.venus.mantle.compositionFull',
       thickness: 'layer.venus.mantle.thickness',
@@ -76,7 +76,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.venus.mantle.funFact',
     },
     {
-      key: 'layer.venus.outerCore', color: '#D86A18', deepColor: '#A05008', r: 76,
+      key: 'layer.venus.outerCore', color: '#D86A18', deepColor: '#A05008', r: 74,
       compositionShort: 'layer.venus.outerCore.compositionShort',
       compositionFull: 'layer.venus.outerCore.compositionFull',
       thickness: 'layer.venus.outerCore.thickness',
@@ -86,7 +86,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.venus.outerCore.funFact',
     },
     {
-      key: 'layer.venus.innerCore', color: '#F0B420', deepColor: '#C08C10', r: 66,
+      key: 'layer.venus.innerCore', color: '#F0B420', deepColor: '#C08C10', r: 46,
       compositionShort: 'layer.venus.innerCore.compositionShort',
       compositionFull: 'layer.venus.innerCore.compositionFull',
       thickness: 'layer.venus.innerCore.thickness',
@@ -109,7 +109,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.earth.crust.funFact',
     },
     {
-      key: 'layer.earth.upperMantle', color: '#7A5028', deepColor: '#5A3818', r: 130,
+      key: 'layer.earth.upperMantle', color: '#7A5028', deepColor: '#5A3818', r: 139,
       compositionShort: 'layer.earth.upperMantle.compositionShort',
       compositionFull: 'layer.earth.upperMantle.compositionFull',
       thickness: 'layer.earth.upperMantle.thickness',
@@ -119,7 +119,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.earth.upperMantle.funFact',
     },
     {
-      key: 'layer.earth.lowerMantle', color: '#A03818', deepColor: '#782808', r: 120,
+      key: 'layer.earth.lowerMantle', color: '#A03818', deepColor: '#782808', r: 131,
       compositionShort: 'layer.earth.lowerMantle.compositionShort',
       compositionFull: 'layer.earth.lowerMantle.compositionFull',
       thickness: 'layer.earth.lowerMantle.thickness',
@@ -162,7 +162,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.mars.crust.funFact',
     },
     {
-      key: 'layer.mars.mantle', color: '#8A4828', deepColor: '#6A3418', r: 130,
+      key: 'layer.mars.mantle', color: '#8A4828', deepColor: '#6A3418', r: 138,
       compositionShort: 'layer.mars.mantle.compositionShort',
       compositionFull: 'layer.mars.mantle.compositionFull',
       thickness: 'layer.mars.mantle.thickness',
@@ -172,7 +172,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.mars.mantle.funFact',
     },
     {
-      key: 'layer.mars.core', color: '#D06C20', deepColor: '#A05010', r: 75,
+      key: 'layer.mars.core', color: '#D06C20', deepColor: '#A05010', r: 68,
       compositionShort: 'layer.mars.core.compositionShort',
       compositionFull: 'layer.mars.core.compositionFull',
       thickness: 'layer.mars.core.thickness',
@@ -195,7 +195,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.jupiter.clouds.funFact',
     },
     {
-      key: 'layer.jupiter.molecularH2', color: '#786858', deepColor: '#584838', r: 130,
+      key: 'layer.jupiter.molecularH2', color: '#786858', deepColor: '#584838', r: 138,
       compositionShort: 'layer.jupiter.molecularH2.compositionShort',
       compositionFull: 'layer.jupiter.molecularH2.compositionFull',
       thickness: 'layer.jupiter.molecularH2.thickness',
@@ -205,7 +205,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.jupiter.molecularH2.funFact',
     },
     {
-      key: 'layer.jupiter.metallicH', color: '#4878A8', deepColor: '#305878', r: 109,
+      key: 'layer.jupiter.metallicH', color: '#4878A8', deepColor: '#305878', r: 100,
       compositionShort: 'layer.jupiter.metallicH.compositionShort',
       compositionFull: 'layer.jupiter.metallicH.compositionFull',
       thickness: 'layer.jupiter.metallicH.thickness',
@@ -215,7 +215,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.jupiter.metallicH.funFact',
     },
     {
-      key: 'layer.jupiter.core', color: '#606060', deepColor: '#404040', r: 28,
+      key: 'layer.jupiter.core', color: '#606060', deepColor: '#404040', r: 20,
       compositionShort: 'layer.jupiter.core.compositionShort',
       compositionFull: 'layer.jupiter.core.compositionFull',
       thickness: 'layer.jupiter.core.thickness',
@@ -238,7 +238,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.saturn.clouds.funFact',
     },
     {
-      key: 'layer.saturn.molecularH2', color: '#A89078', deepColor: '#787058', r: 130,
+      key: 'layer.saturn.molecularH2', color: '#A89078', deepColor: '#787058', r: 138,
       compositionShort: 'layer.saturn.molecularH2.compositionShort',
       compositionFull: 'layer.saturn.molecularH2.compositionFull',
       thickness: 'layer.saturn.molecularH2.thickness',
@@ -248,7 +248,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.saturn.molecularH2.funFact',
     },
     {
-      key: 'layer.saturn.metallicH', color: '#4878A8', deepColor: '#305878', r: 105,
+      key: 'layer.saturn.metallicH', color: '#4878A8', deepColor: '#305878', r: 68,
       compositionShort: 'layer.saturn.metallicH.compositionShort',
       compositionFull: 'layer.saturn.metallicH.compositionFull',
       thickness: 'layer.saturn.metallicH.thickness',
@@ -281,7 +281,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.uranus.atmosphere.funFact',
     },
     {
-      key: 'layer.uranus.iceMantle', color: '#2E5858', deepColor: '#1E3838', r: 130,
+      key: 'layer.uranus.iceMantle', color: '#2E5858', deepColor: '#1E3838', r: 112,
       compositionShort: 'layer.uranus.iceMantle.compositionShort',
       compositionFull: 'layer.uranus.iceMantle.compositionFull',
       thickness: 'layer.uranus.iceMantle.thickness',
@@ -291,7 +291,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.uranus.iceMantle.funFact',
     },
     {
-      key: 'layer.uranus.core', color: '#606060', deepColor: '#404040', r: 21,
+      key: 'layer.uranus.core', color: '#606060', deepColor: '#404040', r: 28,
       compositionShort: 'layer.uranus.core.compositionShort',
       compositionFull: 'layer.uranus.core.compositionFull',
       thickness: 'layer.uranus.core.thickness',
@@ -314,7 +314,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.neptune.atmosphere.funFact',
     },
     {
-      key: 'layer.neptune.iceMantle', color: '#2E5858', deepColor: '#1E3838', r: 130,
+      key: 'layer.neptune.iceMantle', color: '#2E5858', deepColor: '#1E3838', r: 112,
       compositionShort: 'layer.neptune.iceMantle.compositionShort',
       compositionFull: 'layer.neptune.iceMantle.compositionFull',
       thickness: 'layer.neptune.iceMantle.thickness',
@@ -324,7 +324,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.neptune.iceMantle.funFact',
     },
     {
-      key: 'layer.neptune.core', color: '#606060', deepColor: '#404040', r: 21,
+      key: 'layer.neptune.core', color: '#606060', deepColor: '#404040', r: 34,
       compositionShort: 'layer.neptune.core.compositionShort',
       compositionFull: 'layer.neptune.core.compositionFull',
       thickness: 'layer.neptune.core.thickness',
@@ -347,7 +347,7 @@ export const PLANET_LAYERS = {
       funFact: 'sun.layer.corona.funFact',
     },
     {
-      key: 'sun.layer.chromosphere', color: '#D85840', deepColor: '#A84030', r: 130,
+      key: 'sun.layer.chromosphere', color: '#D85840', deepColor: '#A84030', r: 139,
       compositionShort: 'sun.layer.chromosphere.compositionShort',
       compositionFull: 'sun.layer.chromosphere.compositionFull',
       thickness: 'sun.layer.chromosphere.thickness',
@@ -357,7 +357,7 @@ export const PLANET_LAYERS = {
       funFact: 'sun.layer.chromosphere.funFact',
     },
     {
-      key: 'sun.layer.photosphere', color: '#E8C050', deepColor: '#C8A040', r: 120,
+      key: 'sun.layer.photosphere', color: '#E8C050', deepColor: '#C8A040', r: 138,
       compositionShort: 'sun.layer.photosphere.compositionShort',
       compositionFull: 'sun.layer.photosphere.compositionFull',
       thickness: 'sun.layer.photosphere.thickness',
@@ -367,7 +367,7 @@ export const PLANET_LAYERS = {
       funFact: 'sun.layer.photosphere.funFact',
     },
     {
-      key: 'sun.layer.convective', color: '#D87820', deepColor: '#A85810', r: 110,
+      key: 'sun.layer.convective', color: '#D87820', deepColor: '#A85810', r: 137,
       compositionShort: 'sun.layer.convective.compositionShort',
       compositionFull: 'sun.layer.convective.compositionFull',
       thickness: 'sun.layer.convective.thickness',
@@ -411,7 +411,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.moon.crust.funFact',
     },
     {
-      key: 'layer.moon.upperMantle', color: '#6A5E4A', deepColor: '#4A4030', r: 130,
+      key: 'layer.moon.upperMantle', color: '#6A5E4A', deepColor: '#4A4030', r: 135,
       compositionShort: 'layer.moon.upperMantle.compositionShort',
       compositionFull: 'layer.moon.upperMantle.compositionFull',
       thickness: 'layer.moon.upperMantle.thickness',
@@ -421,7 +421,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.moon.upperMantle.funFact',
     },
     {
-      key: 'layer.moon.lowerMantle', color: '#786848', deepColor: '#584830', r: 108,
+      key: 'layer.moon.lowerMantle', color: '#786848', deepColor: '#584830', r: 100,
       compositionShort: 'layer.moon.lowerMantle.compositionShort',
       compositionFull: 'layer.moon.lowerMantle.compositionFull',
       thickness: 'layer.moon.lowerMantle.thickness',
@@ -431,7 +431,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.moon.lowerMantle.funFact',
     },
     {
-      key: 'layer.moon.innerCore', color: '#B08838', deepColor: '#886828', r: 28,
+      key: 'layer.moon.innerCore', color: '#B08838', deepColor: '#886828', r: 27,
       compositionShort: 'layer.moon.innerCore.compositionShort',
       compositionFull: 'layer.moon.innerCore.compositionFull',
       thickness: 'layer.moon.innerCore.thickness',
@@ -454,7 +454,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.io.crust.funFact',
     },
     {
-      key: 'layer.io.mantle', color: '#8A4828', deepColor: '#6A3418', r: 130,
+      key: 'layer.io.mantle', color: '#8A4828', deepColor: '#6A3418', r: 136,
       compositionShort: 'layer.io.mantle.compositionShort',
       compositionFull: 'layer.io.mantle.compositionFull',
       thickness: 'layer.io.mantle.thickness',
@@ -464,7 +464,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.io.mantle.funFact',
     },
     {
-      key: 'layer.io.core', color: '#C89030', deepColor: '#A07020', r: 69,
+      key: 'layer.io.core', color: '#C89030', deepColor: '#A07020', r: 54,
       compositionShort: 'layer.io.core.compositionShort',
       compositionFull: 'layer.io.core.compositionFull',
       thickness: 'layer.io.core.thickness',
@@ -487,7 +487,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.europa.iceShell.funFact',
     },
     {
-      key: 'layer.europa.ocean', color: '#285878', deepColor: '#184058', r: 130,
+      key: 'layer.europa.ocean', color: '#285878', deepColor: '#184058', r: 138,
       compositionShort: 'layer.europa.ocean.compositionShort',
       compositionFull: 'layer.europa.ocean.compositionFull',
       thickness: 'layer.europa.ocean.thickness',
@@ -497,7 +497,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.europa.ocean.funFact',
     },
     {
-      key: 'layer.europa.mantle', color: '#786848', deepColor: '#584830', r: 118,
+      key: 'layer.europa.mantle', color: '#786848', deepColor: '#584830', r: 129,
       compositionShort: 'layer.europa.mantle.compositionShort',
       compositionFull: 'layer.europa.mantle.compositionFull',
       thickness: 'layer.europa.mantle.thickness',
@@ -530,7 +530,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.ganymede.iceShell.funFact',
     },
     {
-      key: 'layer.ganymede.ocean', color: '#285878', deepColor: '#184058', r: 130,
+      key: 'layer.ganymede.ocean', color: '#285878', deepColor: '#184058', r: 129,
       compositionShort: 'layer.ganymede.ocean.compositionShort',
       compositionFull: 'layer.ganymede.ocean.compositionFull',
       thickness: 'layer.ganymede.ocean.thickness',
@@ -540,7 +540,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.ganymede.ocean.funFact',
     },
     {
-      key: 'layer.ganymede.mantle', color: '#786848', deepColor: '#584830', r: 120,
+      key: 'layer.ganymede.mantle', color: '#786848', deepColor: '#584830', r: 97,
       compositionShort: 'layer.ganymede.mantle.compositionShort',
       compositionFull: 'layer.ganymede.mantle.compositionFull',
       thickness: 'layer.ganymede.mantle.thickness',
@@ -573,7 +573,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.callisto.iceRock.funFact',
     },
     {
-      key: 'layer.callisto.interior', color: '#4A4038', deepColor: '#302820', r: 130,
+      key: 'layer.callisto.interior', color: '#4A4038', deepColor: '#302820', r: 128,
       compositionShort: 'layer.callisto.interior.compositionShort',
       compositionFull: 'layer.callisto.interior.compositionFull',
       thickness: 'layer.callisto.interior.thickness',
@@ -606,7 +606,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.titan.atmosphere.funFact',
     },
     {
-      key: 'layer.titan.iceShell', color: '#A0B0C0', deepColor: '#8090A0', r: 130,
+      key: 'layer.titan.iceShell', color: '#A0B0C0', deepColor: '#8090A0', r: 135,
       compositionShort: 'layer.titan.iceShell.compositionShort',
       compositionFull: 'layer.titan.iceShell.compositionFull',
       thickness: 'layer.titan.iceShell.thickness',
@@ -616,7 +616,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.titan.iceShell.funFact',
     },
     {
-      key: 'layer.titan.ocean', color: '#285878', deepColor: '#184058', r: 120,
+      key: 'layer.titan.ocean', color: '#285878', deepColor: '#184058', r: 129,
       compositionShort: 'layer.titan.ocean.compositionShort',
       compositionFull: 'layer.titan.ocean.compositionFull',
       thickness: 'layer.titan.ocean.thickness',
@@ -626,7 +626,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.titan.ocean.funFact',
     },
     {
-      key: 'layer.titan.iceMantle', color: '#688090', deepColor: '#486070', r: 110,
+      key: 'layer.titan.iceMantle', color: '#688090', deepColor: '#486070', r: 118,
       compositionShort: 'layer.titan.iceMantle.compositionShort',
       compositionFull: 'layer.titan.iceMantle.compositionFull',
       thickness: 'layer.titan.iceMantle.thickness',
@@ -636,7 +636,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.titan.iceMantle.funFact',
     },
     {
-      key: 'layer.titan.core', color: '#786848', deepColor: '#584830', r: 47,
+      key: 'layer.titan.core', color: '#786848', deepColor: '#584830', r: 49,
       compositionShort: 'layer.titan.core.compositionShort',
       compositionFull: 'layer.titan.core.compositionFull',
       thickness: 'layer.titan.core.thickness',
@@ -659,7 +659,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.enceladus.iceShell.funFact',
     },
     {
-      key: 'layer.enceladus.ocean', color: '#285878', deepColor: '#184058', r: 130,
+      key: 'layer.enceladus.ocean', color: '#285878', deepColor: '#184058', r: 127,
       compositionShort: 'layer.enceladus.ocean.compositionShort',
       compositionFull: 'layer.enceladus.ocean.compositionFull',
       thickness: 'layer.enceladus.ocean.thickness',
@@ -669,7 +669,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.enceladus.ocean.funFact',
     },
     {
-      key: 'layer.enceladus.core', color: '#786848', deepColor: '#584830', r: 56,
+      key: 'layer.enceladus.core', color: '#786848', deepColor: '#584830', r: 106,
       compositionShort: 'layer.enceladus.core.compositionShort',
       compositionFull: 'layer.enceladus.core.compositionFull',
       thickness: 'layer.enceladus.core.thickness',
@@ -693,7 +693,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.pluto.nitrogenIce.funFact',
     },
     {
-      key: 'layer.pluto.waterIce', color: '#7898B0', deepColor: '#587888', r: 130,
+      key: 'layer.pluto.waterIce', color: '#7898B0', deepColor: '#587888', r: 134,
       compositionShort: 'layer.pluto.waterIce.compositionShort',
       compositionFull: 'layer.pluto.waterIce.compositionFull',
       thickness: 'layer.pluto.waterIce.thickness',
@@ -703,7 +703,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.pluto.waterIce.funFact',
     },
     {
-      key: 'layer.pluto.core', color: '#786848', deepColor: '#584830', r: 65,
+      key: 'layer.pluto.core', color: '#786848', deepColor: '#584830', r: 100,
       compositionShort: 'layer.pluto.core.compositionShort',
       compositionFull: 'layer.pluto.core.compositionFull',
       thickness: 'layer.pluto.core.thickness',
@@ -726,7 +726,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.ceres.regolith.funFact',
     },
     {
-      key: 'layer.ceres.iceMantle', color: '#689098', deepColor: '#487078', r: 130,
+      key: 'layer.ceres.iceMantle', color: '#689098', deepColor: '#487078', r: 128,
       compositionShort: 'layer.ceres.iceMantle.compositionShort',
       compositionFull: 'layer.ceres.iceMantle.compositionFull',
       thickness: 'layer.ceres.iceMantle.thickness',
@@ -736,7 +736,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.ceres.iceMantle.funFact',
     },
     {
-      key: 'layer.ceres.core', color: '#786848', deepColor: '#584830', r: 81,
+      key: 'layer.ceres.core', color: '#786848', deepColor: '#584830', r: 44,
       compositionShort: 'layer.ceres.core.compositionShort',
       compositionFull: 'layer.ceres.core.compositionFull',
       thickness: 'layer.ceres.core.thickness',
@@ -759,7 +759,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.eris.methaneIce.funFact',
     },
     {
-      key: 'layer.eris.waterIce', color: '#7898B0', deepColor: '#587888', r: 130,
+      key: 'layer.eris.waterIce', color: '#7898B0', deepColor: '#587888', r: 134,
       compositionShort: 'layer.eris.waterIce.compositionShort',
       compositionFull: 'layer.eris.waterIce.compositionFull',
       thickness: 'layer.eris.waterIce.thickness',
@@ -769,7 +769,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.eris.waterIce.funFact',
     },
     {
-      key: 'layer.eris.core', color: '#786848', deepColor: '#584830', r: 70,
+      key: 'layer.eris.core', color: '#786848', deepColor: '#584830', r: 120,
       compositionShort: 'layer.eris.core.compositionShort',
       compositionFull: 'layer.eris.core.compositionFull',
       thickness: 'layer.eris.core.thickness',
@@ -802,7 +802,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.haumea.iceMantle.funFact',
     },
     {
-      key: 'layer.haumea.core', color: '#786848', deepColor: '#584830', r: 120,
+      key: 'layer.haumea.core', color: '#786848', deepColor: '#584830', r: 106,
       compositionShort: 'layer.haumea.core.compositionShort',
       compositionFull: 'layer.haumea.core.compositionFull',
       thickness: 'layer.haumea.core.thickness',
@@ -835,7 +835,7 @@ export const PLANET_LAYERS = {
       funFact: 'layer.makemake.waterIce.funFact',
     },
     {
-      key: 'layer.makemake.core', color: '#786848', deepColor: '#584830', r: 120,
+      key: 'layer.makemake.core', color: '#786848', deepColor: '#584830', r: 95,
       compositionShort: 'layer.makemake.core.compositionShort',
       compositionFull: 'layer.makemake.core.compositionFull',
       thickness: 'layer.makemake.core.thickness',
@@ -856,7 +856,7 @@ export const PLANET_LAYERS = {
       state: 'layer.charon.iceCrust.state',
       funFact: 'layer.charon.iceCrust.funFact',
     },
-    { key: 'layer.charon.iceRockMix', color: '#7a8fa0', r: 130,
+    { key: 'layer.charon.iceRockMix', color: '#7a8fa0', r: 129,
       compositionShort: 'layer.charon.iceRockMix.compositionShort',
       compositionFull: 'layer.charon.iceRockMix.compositionFull',
       thickness: 'layer.charon.iceRockMix.thickness',
@@ -865,7 +865,7 @@ export const PLANET_LAYERS = {
       state: 'layer.charon.iceRockMix.state',
       funFact: 'layer.charon.iceRockMix.funFact',
     },
-    { key: 'layer.charon.rockyCore',  color: '#5a4a3a', r: 75,
+    { key: 'layer.charon.rockyCore',  color: '#5a4a3a', r: 95,
       compositionShort: 'layer.charon.rockyCore.compositionShort',
       compositionFull: 'layer.charon.rockyCore.compositionFull',
       thickness: 'layer.charon.rockyCore.thickness',
