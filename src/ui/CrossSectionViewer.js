@@ -451,17 +451,19 @@ export class CrossSectionViewer {
     this._clipPlane2     = null;
     this._layerMeshes    = [];
     this._faceMeshes     = [];
+    this._wedgeMeshes    = [];
+    this._wedgeGroup     = null;
     this._starfield      = null;
     this._coreLight      = null;
     this._coreLightBlue  = null;
+    this._wedgeLight     = null;
     this._scanRing       = null;
     this._coreParticles  = null;
 
-    // Camera: nearly equatorial so the cut face (+X half-circle) fills the viewport.
-    // Small +X offset keeps the exterior dome visible alongside the cut face.
-    // Camera ~42° off face-normal: face disc visible at ~74% width, 3D dome depth preserved
-    this._camStart = new THREE.Vector3(6.0, 1.5, 5.0);
-    this._camEnd   = new THREE.Vector3(2.0, 0.3, 1.8);
+    // Camera centered between globe (x=0) and wedge (x=2.8)
+    this._camStart = new THREE.Vector3(1.4, 2.5, 10.0);
+    this._camEnd   = new THREE.Vector3(1.4, 0.9,  5.5);
+    this._lookAt   = new THREE.Vector3(1.4, 0.0,  0.0);
 
     // Color dot indicators (replacing numbered badges)
     this._colorDots = [];
@@ -638,9 +640,11 @@ export class CrossSectionViewer {
     //   • Face disc at x=0.002 through the opening (right side clipped away)
     // The face disc has no clippingPlanes so it's always rendered.
     // Animation sweeps c from 1.5 → 0 (blade cuts from right edge to center).
-    this._clipPlane1 = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 1.5);
-    this._clipPlane2 = null; // unused — kept for compat with dispose()
-    const clipPlanes = [this._clipPlane1];
+    // Two planes with clipIntersection:true remove the front-right quadrant (x>0 AND z>0)
+    // revealing a wedge-shaped notch into the interior
+    this._clipPlane1 = new THREE.Plane(new THREE.Vector3(-1, 0,  0), 1.5); // clips x > 1.5 (start fully outside)
+    this._clipPlane2 = new THREE.Plane(new THREE.Vector3( 0, 0, -1), 0.0); // clips z > 0
+    const clipPlanes = [this._clipPlane1, this._clipPlane2];
 
     const maxR = layers[0].r;
     this._layerMeshes   = [];
@@ -670,7 +674,7 @@ export class CrossSectionViewer {
         emissive:          baseEmissive,
         emissiveIntensity: 1.0,
         clippingPlanes:    clipPlanes,
-        clipIntersection:  false,
+        clipIntersection:  true,
         side:              THREE.DoubleSide,
       });
       mat.userData.baseEmissive = baseEmissive.clone();
@@ -687,49 +691,28 @@ export class CrossSectionViewer {
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 96, 64), mat);
       this._layerMeshes.push(mesh);
 
-      // Rim disc shows this layer's cut face interior when the layer is pulled out
-      const innerRimR = i < layers.length - 1 ? (layers[i + 1].r / maxR) : 0;
-      const rimGeo = new THREE.RingGeometry(innerRimR + 0.001, radius, 64);
-      const rimMat = new THREE.MeshStandardMaterial({
-        color:             layer.color,
-        roughness:         0.6,
-        metalness:         0.1,
-        emissive:          new THREE.Color(layer.color).multiplyScalar(0.12),
-        emissiveIntensity: 1.0,
-        clippingPlanes:    clipPlanes,
-        clipIntersection:  false,
-        side:              THREE.DoubleSide,
-        depthWrite:        true,
-      });
-      const rim = new THREE.Mesh(rimGeo, rimMat);
-      rim.rotation.y = Math.PI / 2; // face +X toward camera
-      rim.position.x = 0.001;
-      mesh.add(rim);
+
     }
 
     // Initialise expansion state arrays now that _layerMeshes is fully populated
     this._expandTarget    = new Array(this._layerMeshes.length).fill(0);
     this._expandCurrent   = new Array(this._layerMeshes.length).fill(0);
 
-    // ── Cut-face disc ──
-    // Full circle at x=0.002, facing +X (toward camera).
-    // MeshBasicMaterial — ignores lighting, always shows texture at full brightness.
-    // Depth-test hides it inside the sphere until the left side is cut away.
-    const faceTex = generateFaceTexture(layers);
-    const faceMat = new THREE.MeshBasicMaterial({
-      map:  faceTex,
-      side: THREE.FrontSide,
-    });
-    const faceMesh = new THREE.Mesh(new THREE.CircleGeometry(1.0, 128), faceMat);
-    faceMesh.rotation.y = Math.PI / 2; // +Z face → face +X toward camera ✓
-    faceMesh.position.x = 0.002;
-    this._faceMeshes.push(faceMesh);
+
 
     // ── Core glow lights (warm amber key + cool blue-white fill) ──
     this._coreLight     = new THREE.PointLight(0xff8c00, 0, 3.0, 1.8); // amber
     this._coreLightBlue = new THREE.PointLight(0xe0f0ff, 0, 2.0, 2.0); // blue-white
     this._scene.add(this._coreLight);
     this._scene.add(this._coreLightBlue);
+
+    // ── Wedge fill light ──
+    this._wedgeLight = new THREE.PointLight(0xfff5e0, 1.8, 8.0, 1.5);
+    this._wedgeLight.position.set(2.8, 2.0, 2.0);
+    this._scene.add(this._wedgeLight);
+
+    // ── Extracted wedge (right side) ──
+    this._buildWedge(layers, maxR);
 
     // ── Scan ring: horizontal torus that sweeps pole-to-pole before the cut ──
     this._scanRing = new THREE.Mesh(
@@ -773,12 +756,74 @@ export class CrossSectionViewer {
 
     // ── Sphere group (for scale-in animation) ──
     this._sphereGroup = new THREE.Group();
-    for (const m of [...this._layerMeshes, ...this._faceMeshes]) {
+    for (const m of this._layerMeshes) {
       this._sphereGroup.add(m);
     }
     this._sphereGroup.add(this._coreParticles);
     this._sphereGroup.scale.setScalar(0);
     this._scene.add(this._sphereGroup);
+  }
+
+  _buildWedge(layers, maxR) {
+    const WEDGE_X     = 2.8;
+    const SCALE       = 1.45;
+    const TOTAL_H     = 3.2;
+    const SEG         = 48;
+
+    this._wedgeGroup = new THREE.Group();
+    this._wedgeGroup.position.set(WEDGE_X, 0, 0);
+    this._wedgeGroup.scale.setScalar(0);
+    this._wedgeMeshes = [];
+
+    let yTop = TOTAL_H / 2;
+
+    for (let i = 0; i < layers.length; i++) {
+      const outerR = layers[i].r / maxR;
+      const innerR = i < layers.length - 1 ? layers[i + 1].r / maxR : 0;
+      const h      = Math.max((outerR - innerR) * TOTAL_H, 0.006);
+
+      const lt          = layerType(layers[i].key);
+      const depthFactor = layers.length > 1 ? i / (layers.length - 1) : 0;
+      const pbr         = layerPBR(lt, depthFactor);
+      const baseEm      = new THREE.Color(layers[i].color).multiplyScalar(pbr.emissiveFactor);
+
+      const geo = new THREE.CylinderGeometry(
+        outerR * SCALE, innerR * SCALE, h, SEG, 1, false,
+      );
+      const mat = new THREE.MeshStandardMaterial({
+        color:             layers[i].color,
+        roughness:         pbr.roughness,
+        metalness:         pbr.metalness,
+        emissive:          baseEm,
+        emissiveIntensity: 1.0,
+      });
+      mat.userData.baseEmissive = baseEm.clone();
+
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.y = yTop - h / 2;
+      yTop -= h;
+
+      this._wedgeMeshes.push(mesh);
+      this._wedgeGroup.add(mesh);
+    }
+
+    // Thin bright ring at each layer boundary
+    for (let i = 1; i < layers.length; i++) {
+      const r = (layers[i].r / maxR) * SCALE;
+      const y = TOTAL_H / 2 - (layers[0].r / maxR - layers[i].r / maxR) * TOTAL_H;
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(r, 0.008, 6, SEG),
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color(layers[i].color).lerp(new THREE.Color(0xffffff), 0.5),
+          transparent: true, opacity: 0.7,
+        }),
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = y;
+      this._wedgeGroup.add(ring);
+    }
+
+    this._scene.add(this._wedgeGroup);
   }
 
   // ─── Animation loop ──────────────────────────────────────────────────────────
@@ -865,29 +910,16 @@ export class CrossSectionViewer {
       }
     }
 
-    // ── Camera: zoom in (0–2.8 s) then gentle sway (2.8 s+) ──
-    // Sway ±12° from start — never swings to the back so cut face stays visible.
+    // ── Camera: zoom in (0–2.8 s), then static ──
     if (this._camera) {
-      const r          = Math.sqrt(this._camEnd.x ** 2 + this._camEnd.z ** 2);
-      const startAngle = Math.atan2(this._camEnd.x, this._camEnd.z);
       if (elapsed < 2.8) {
         const camT = this._easeOutCubic(Math.min(elapsed / 2.8, 1.0));
         this._camera.position.lerpVectors(this._camStart, this._camEnd, camT);
-        this._camera.lookAt(0, 0, 0);
+        this._camera.lookAt(this._lookAt);
       } else {
-        // Gentle sway: ±0.22 rad (±12.6°), period ~31 s
-        const angle = startAngle + Math.sin((elapsed - 2.8) * 0.20) * 0.22;
-        this._camera.position.x = r * Math.sin(angle);
-        this._camera.position.z = r * Math.cos(angle);
-        this._camera.position.y = this._camEnd.y;
-        this._camera.lookAt(0, 0, 0);
-
-        // ── Clip plane tracks camera so cut always faces toward viewer ──
-        if (this._clipPlane1 && cutT >= 1.0) {
-          const camAngle = Math.atan2(this._camera.position.x, this._camera.position.z);
-          this._clipPlane1.normal.set(-Math.sin(camAngle), 0, -Math.cos(camAngle));
-          this._clipPlane1.constant = 0;
-        }
+        // No sway — static final position keeps both globe and wedge in frame
+        this._camera.position.copy(this._camEnd);
+        this._camera.lookAt(this._lookAt);
       }
     }
 
@@ -899,6 +931,26 @@ export class CrossSectionViewer {
     // ── Update dot positions every frame ──
     if (this._colorDots.length > 0 && this._renderer && this._camera) {
       this._updateDotPositions();
+    }
+
+    // ── Phase 4: Wedge scales in (2.5 s+) then slowly rotates ──
+    if (this._wedgeGroup) {
+      if (elapsed > 2.5) {
+        const wedgeT = Math.min((elapsed - 2.5) / 1.2, 1.0);
+        this._wedgeGroup.scale.setScalar(this._easeOutCubic(wedgeT));
+        if (wedgeT >= 1.0) {
+          this._wedgeGroup.rotation.y += delta * 0.25;
+        }
+      }
+      // Highlight wedge layer matching hovered sidebar row
+      if (this._activeLayerIndex < 0) {
+        for (let i = 0; i < this._wedgeMeshes.length; i++) {
+          const mat = this._wedgeMeshes[i]?.material;
+          if (!mat) continue;
+          mat.emissive = mat.userData.baseEmissive?.clone() ?? new THREE.Color(0);
+          mat.emissiveIntensity = 1.0;
+        }
+      }
     }
 
     // ── Innermost core: dramatic pulsing glow after explosion settles ──
@@ -1206,16 +1258,17 @@ export class CrossSectionViewer {
         dot.classList.remove('glow');
       }
     }
-    // Highlight layer in 3D with glow effect
-    if (this._layerMeshes[index] && this._activeLayerIndex < 0) {
-      const mat = this._layerMeshes[index].material;
-      const base = mat.userData.baseEmissive;
-      if (entering) {
-        mat.emissive = base.clone().multiplyScalar(3.0);
-      } else {
-        mat.emissive = base.clone();
+    // Highlight matching layer on BOTH globe and wedge
+    for (const meshArr of [this._layerMeshes, this._wedgeMeshes]) {
+      const mesh = meshArr?.[index];
+      if (mesh && this._activeLayerIndex < 0) {
+        const mat  = mesh.material;
+        const base = mat.userData.baseEmissive;
+        if (base) {
+          mat.emissive = entering ? base.clone().multiplyScalar(4.0) : base.clone();
+          mat.emissiveIntensity = 1.0;
+        }
       }
-      mat.emissiveIntensity = 1.0;
     }
 
   }
@@ -1375,8 +1428,9 @@ export class CrossSectionViewer {
 
   _disposeThree() {
     for (const mesh of [
-      ...(this._layerMeshes || []),
-      ...(this._faceMeshes  || []),
+      ...(this._layerMeshes  || []),
+      ...(this._faceMeshes   || []),
+      ...(this._wedgeMeshes  || []),
     ]) {
       mesh.geometry?.dispose();
       if (mesh.material) {
@@ -1386,6 +1440,13 @@ export class CrossSectionViewer {
     }
     this._layerMeshes = [];
     this._faceMeshes  = [];
+    this._wedgeMeshes = [];
+    if (this._wedgeGroup) {
+      this._wedgeGroup.traverse(c => { c.geometry?.dispose(); c.material?.dispose(); });
+      this._wedgeGroup = null;
+    }
+    if (this._wedgeLight?.parent) this._wedgeLight.parent.remove(this._wedgeLight);
+    this._wedgeLight = null;
 
     if (this._starfield) {
       this._starfield.geometry?.dispose();
