@@ -22,6 +22,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { SOLAR_SYSTEM, PLANET_ORDER } from '../data/solarSystem.js';
 import {
   sunVertexShader, sunFragmentShader,
@@ -245,6 +247,14 @@ export class SolarSystemScene {
       this._filmPass = new FilmPass(0, false);
       this._filmPass.uniforms.intensity.value = 0;
       this.composer.addPass(this._filmPass);
+      // FXAA — compensates for hardware AA being ineffective inside EffectComposer framebuffers
+      const fxaaPass = new ShaderPass(FXAAShader);
+      fxaaPass.uniforms['resolution'].value.set(
+        1 / (window.innerWidth * Math.min(window.devicePixelRatio, 2)),
+        1 / (window.innerHeight * Math.min(window.devicePixelRatio, 2))
+      );
+      this._fxaaPass = fxaaPass;
+      this.composer.addPass(fxaaPass);
     }
 
     // Bind event handlers so we can remove them later
@@ -1786,6 +1796,10 @@ export class SolarSystemScene {
     }
     if (this._bloomPass) {
       this._bloomPass.resolution.set(w, h);
+    }
+    if (this._fxaaPass) {
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      this._fxaaPass.uniforms['resolution'].value.set(1 / (w * dpr), 1 / (h * dpr));
     }
   }
 
