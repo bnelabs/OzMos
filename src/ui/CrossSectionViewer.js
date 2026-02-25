@@ -15,6 +15,9 @@ import { escapeHTML } from '../utils/sanitize.js';
 import '../styles/cross-section.css';
 import { getLocalizedPlanet } from '../i18n/localizedData.js';
 
+/** True on phones/tablets — used to reduce geometry/texture resolution */
+const _isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+
 // ─── Color-coded layer palette ──────────────────────────────────────────────
 // 7 colors, assigned innermost → outermost (reversed when applied so index 0
 // in the layers array = outermost = last color in the palette).
@@ -130,7 +133,7 @@ function ringGradient(ctx, cx, cy, innerR, outerR, lt) {
 }
 
 function generateFaceTexture(layers) {
-  const S = 512;
+  const S = _isMobile ? 256 : 512;
   const canvas = document.createElement('canvas');
   canvas.width = S; canvas.height = S;
   const ctx = canvas.getContext('2d');
@@ -258,7 +261,7 @@ function _clamp8(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
  * Each layer type (mantle, core, ice, gas) gets its own geological pixel shader.
  */
 function generateLayerTexture(layer, lt) {
-  const W = 256, H = 128;
+  const W = _isMobile ? 128 : 256, H = _isMobile ? 64 : 128;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx   = canvas.getContext('2d');
@@ -521,6 +524,14 @@ export class CrossSectionViewer {
       return;
     }
 
+    // Dispose any existing scene first (prevents WebGL context leak on re-open)
+    if (this._renderer) this._disposeThree();
+
+    // Pause the main scene renderer to free GPU bandwidth on mobile
+    if (typeof window._scene?.setRenderPaused === 'function') {
+      window._scene.setRenderPaused(true);
+    }
+
     this._disposed = false;
     this._buildScene(layers);
     this._startTime     = performance.now();
@@ -545,9 +556,12 @@ export class CrossSectionViewer {
   close() {
     if (!this._overlay || this._overlay.classList.contains('hidden')) return;
 
-    // Resume planet rotation
+    // Resume planet rotation and main renderer
     if (typeof window._scene?.setPlanetRotationPaused === 'function') {
       window._scene.setPlanetRotationPaused(false);
+    }
+    if (typeof window._scene?.setRenderPaused === 'function') {
+      window._scene.setRenderPaused(false);
     }
 
     document.removeEventListener('keydown', this._boundKeydown);
@@ -602,7 +616,10 @@ export class CrossSectionViewer {
     const h = Math.max(this._canvas.clientHeight, 200);
 
     this._renderer = new THREE.WebGLRenderer({
-      canvas: this._canvas, antialias: true, alpha: true,
+      canvas: this._canvas,
+      antialias: !_isMobile,
+      alpha: true,
+      powerPreference: 'low-power',
     });
     this._renderer.setSize(w, h, false);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -688,7 +705,7 @@ export class CrossSectionViewer {
         mat.needsUpdate = true;
       }
 
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 96, 64), mat);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, _isMobile ? 48 : 96, _isMobile ? 32 : 64), mat);
       this._layerMeshes.push(mesh);
 
 
@@ -716,7 +733,7 @@ export class CrossSectionViewer {
 
     // ── Scan ring: horizontal torus that sweeps pole-to-pole before the cut ──
     this._scanRing = new THREE.Mesh(
-      new THREE.TorusGeometry(1.12, 0.009, 8, 128),
+      new THREE.TorusGeometry(1.12, 0.009, 8, _isMobile ? 64 : 128),
       new THREE.MeshBasicMaterial({
         color: 0x00e8ff,
         transparent: true,
@@ -768,7 +785,7 @@ export class CrossSectionViewer {
     const WEDGE_X     = 2.8;
     const SCALE       = 1.45;
     const TOTAL_H     = 3.2;
-    const SEG         = 48;
+    const SEG         = _isMobile ? 24 : 48;
 
     this._wedgeGroup = new THREE.Group();
     this._wedgeGroup.position.set(WEDGE_X, 0, 0);

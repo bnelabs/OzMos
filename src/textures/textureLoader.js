@@ -47,7 +47,8 @@ export function getTexturePath(planetName, forceLow = false) {
 // Build texture paths using LOD quality detection
 const TEXTURE_PATHS = {
   mercury: getTexturePath('mercury'),
-  venus: getTexturePath('venus'),
+  // venus_2k.jpg is a bad/mislabeled file (225KB) — only load the correct 4K version
+  venus: TEXTURE_QUALITY === 'high' ? '/textures/4k/venus_4k.jpg' : null,
   earth: getTexturePath('earth'),
   earthClouds: '/textures/earth_clouds_2k.jpg',
   mars: getTexturePath('mars'),
@@ -115,7 +116,7 @@ async function loadTextureWithRetry(loader, url, maxAttempts = 3) {
  */
 export async function loadAllTextures(onProgress) {
   const loader = new THREE.TextureLoader();
-  const keys = Object.keys(TEXTURE_PATHS);
+  const keys = Object.keys(TEXTURE_PATHS).filter(k => TEXTURE_PATHS[k] != null);
   const total = keys.length;
   let loaded = 0;
   const textures = {};

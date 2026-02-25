@@ -100,8 +100,6 @@
     <!-- Collapsible nav controls (hidden on mobile, inline on desktop) -->
     <div class="nav-controls" id="nav-controls">
       <div class="nav-group" data-group-label="Explore">
-        <button id="btn-overview" class="nav-btn nav-btn--primary active" title="Solar System Overview" aria-label="Solar System Overview" data-i18n-aria="aria.overview" data-i18n="nav.overview">Overview</button>
-        <button id="btn-recenter" class="nav-btn nav-btn--primary" title="Re-centre on Sun" aria-label="Re-centre on Sun" data-i18n-aria="aria.recenter" data-i18n="nav.recenter">Re-centre</button>
         <button id="btn-compare" class="nav-btn nav-btn--primary" title="Compare Planets" aria-label="Compare Planets" aria-pressed="false" data-i18n-aria="aria.compare" data-i18n="nav.compare">Compare</button>
         <button id="btn-missions" class="nav-btn nav-btn--secondary" title="NASA Missions" aria-label="NASA Missions" data-i18n-aria="aria.missions">
           <span class="nav-btn-text" data-i18n="nav.missions">Missions</span>
@@ -118,7 +116,6 @@
         </button>
         <button id="btn-orbits" class="nav-btn nav-btn--utility active" title="Toggle Orbit Lines" aria-label="Toggle Orbit Lines" aria-pressed="true" data-i18n-aria="aria.orbits" data-i18n="nav.orbits">Orbits</button>
         <button id="btn-labels" class="nav-btn nav-btn--utility active" title="Toggle Labels" aria-label="Toggle Labels" aria-pressed="true" data-i18n-aria="aria.labels" data-i18n="nav.labels">Labels</button>
-        <button id="btn-scale" class="nav-btn nav-btn--utility" title="Real Scale Comparison" aria-label="Real Scale Comparison" data-i18n="nav.scale">Scale</button>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-group" data-group-label="Media">
@@ -514,15 +511,6 @@
   </div>
 </div>
 
-<div id="scale-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="scale-title">
-  <div class="modal-glass scale-panel">
-    <h2 id="scale-title" data-i18n="scale.title">Real Scale Comparison</h2>
-    <button class="modal-close" id="scale-close" aria-label="Close">&#x2715;</button>
-    <p class="scale-subtitle" data-i18n="scale.subtitle">Planet diameters to scale (sqrt-scaled for readability)</p>
-    <div id="scale-svg-container"></div>
-    <p class="scale-ref" id="scale-ref">&#x2190; 1 Earth diameter (12,742 km) &#x2192;</p>
-  </div>
-</div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

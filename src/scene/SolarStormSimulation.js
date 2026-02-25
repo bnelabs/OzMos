@@ -232,7 +232,7 @@ export class SolarStormSimulation {
         const latitude = THREE.MathUtils.degToRad(20 + latFrac * 55) * poleSign;
         const r = L * Math.cos(latitude) * Math.cos(latitude);
 
-        positions[idx]     = pos.x + r * Math.cos(latitude) * Math.cos(longitude);
+        positions[idx]     = r * Math.cos(latitude) * Math.cos(longitude);
         positions[idx + 1] = pos.y + r * Math.sin(latitude);
         positions[idx + 2] = pos.z + r * Math.cos(latitude) * Math.sin(longitude);
 
@@ -260,6 +260,7 @@ export class SolarStormSimulation {
 
     const points = new THREE.Points(geo, mat);
     this._auroraFieldLines = points;
+    points.position.copy(pos);  // offset to planet's current position
     return points;
   }
 
@@ -309,7 +310,7 @@ export class SolarStormSimulation {
         const x = r * Math.sin(theta) * Math.cos(angle);
         const y = r * Math.cos(theta);
         const z = r * Math.sin(theta) * Math.sin(angle);
-        points.push(new THREE.Vector3(x + pos.x, y + pos.y, z + pos.z));
+        points.push(new THREE.Vector3(x, y, z));
       }
 
       if (points.length < 3) continue;
@@ -325,6 +326,8 @@ export class SolarStormSimulation {
       });
       const tube = new THREE.Mesh(tubeGeo, tubeMat);
       tube.visible = false; // hidden until CME arrives at this planet
+      tube.position.copy(pos);           // offset to planet position
+      tube.userData.fieldLineKey = key;  // stored for per-frame update
       this._scene.add(tube);
       this._fieldLines.push(tube);
       if (!this._fieldLinesByPlanet[key]) this._fieldLinesByPlanet[key] = [];
@@ -501,6 +504,9 @@ export class SolarStormSimulation {
 
         const auroraMesh = new THREE.Mesh(auroraGeo, auroraMat);
         auroraMesh.position.set(pos.x, pos.y + pole * radius * 0.8, pos.z);
+        // Store polar offset for per-frame position tracking
+        auroraMesh.userData.auroraKey = key;
+        auroraMesh.userData.polePosY = pole * radius * 0.8;
         if (pole === -1) auroraMesh.rotation.x = Math.PI;
         this._scene.add(auroraMesh);
         this._auroras.push({ mesh: auroraMesh, key, startTime: this._elapsed });
@@ -803,6 +809,29 @@ export class SolarStormSimulation {
       const tailLen = (mag ? mag.bowShockSize : 3) * 10;
       const sunDir = newPos.clone().normalize().negate();
       tail.mesh.position.copy(newPos.clone().addScaledVector(sunDir, tailLen));
+    }
+
+    // Update field line tube positions to follow planets
+    for (const tube of this._fieldLines) {
+      const fk = tube.userData.fieldLineKey;
+      if (fk) tube.position.copy(this._getPlanetPos(fk));
+    }
+
+    // Update aurora field lines to follow Earth
+    if (this._auroraFieldLines) {
+      this._auroraFieldLines.position.copy(this._getPlanetPos('earth'));
+    }
+
+    // Update aurora curtain positions to follow planets
+    for (const aurora of this._auroras) {
+      if (aurora.mesh.userData.auroraKey) {
+        const aPos = this._getPlanetPos(aurora.mesh.userData.auroraKey);
+        aurora.mesh.position.set(
+          aPos.x,
+          aPos.y + (aurora.mesh.userData.polePosY || 0),
+          aPos.z,
+        );
+      }
     }
 
     // Check if CME has finished

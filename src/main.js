@@ -62,7 +62,6 @@ const compareContent = document.getElementById('compare-content');
 const compareClose = document.getElementById('compare-close');
 const tooltip = document.getElementById('tooltip');
 
-const btnOverview = document.getElementById('btn-overview');
 const btnCompare = document.getElementById('btn-compare');
 const btnMissions = document.getElementById('btn-missions');
 const btnSpeed = document.getElementById('btn-speed');
@@ -241,8 +240,6 @@ function refreshStaticText() {
   btnSpeed.setAttribute('aria-label', t('aria.speed') + ': ' + speedDisplay);
 
   // Update nav button aria-labels
-  btnOverview.setAttribute('aria-label', t('aria.overview'));
-  btnOverview.setAttribute('title', t('aria.overview'));
   btnCompare.setAttribute('aria-label', t('aria.compare'));
   btnCompare.setAttribute('title', t('aria.compare'));
   btnOrbits.setAttribute('aria-label', t('aria.orbits'));
@@ -1485,20 +1482,6 @@ if (planetBar && window.matchMedia('(min-width: 768px)').matches) {
 
 // ==================== Navigation Buttons ====================
 
-btnOverview.addEventListener('click', () => {
-  if (scene) scene.goToOverview();
-  closeInfoPanel();
-  btnOverview.classList.add('active');
-  audioManager.setContext('overview');
-});
-
-const btnRecenter = document.getElementById('btn-recenter');
-if (btnRecenter) {
-  btnRecenter.addEventListener('click', () => {
-    if (scene) scene.goToOverview();
-  });
-}
-
 btnCompare.addEventListener('click', () => {
   const isHidden = comparePanel.classList.contains('hidden');
   if (isHidden) {
@@ -2358,111 +2341,6 @@ document.getElementById('settings-close').addEventListener('click', () => {
 });
 document.getElementById('settings-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) document.getElementById('settings-modal').classList.add('hidden');
-});
-
-// ==================== Real Scale Comparison Panel ====================
-
-function buildScaleSVG() {
-  const BODIES = [
-    { name: 'Sun',     diameter: 1391000, color: '#FDB813' },
-    { name: 'Mercury', diameter: 4879,    color: '#B5B5B5' },
-    { name: 'Venus',   diameter: 12104,   color: '#E8C47A' },
-    { name: 'Earth',   diameter: 12742,   color: '#4FA3E0' },
-    { name: 'Mars',    diameter: 6779,    color: '#C1440E' },
-    { name: 'Jupiter', diameter: 139820,  color: '#C88B3A' },
-    { name: 'Saturn',  diameter: 116460,  color: '#E8D5A3' },
-    { name: 'Uranus',  diameter: 50724,   color: '#7DE8E8' },
-    { name: 'Neptune', diameter: 49244,   color: '#3F54BA' },
-    { name: 'Pluto',   diameter: 2376,    color: '#C8B8A2' },
-  ];
-
-  // sqrt-scale for display readability
-  const sqrtScale = (d) => Math.sqrt(d);
-  const JUPITER_SQRT = sqrtScale(139820);
-  const MAX_DISPLAY_R = 55; // px, Jupiter = 55px radius
-  const scale = MAX_DISPLAY_R / JUPITER_SQRT;
-
-  const radii = BODIES.map(b => sqrtScale(b.diameter) * scale);
-  const sunR = radii[0]; // Sun radius in display px
-
-  const SVG_H = 200;
-  const PAD = 20;
-  const CENTER_Y = SVG_H / 2 + 20; // vertical center for all circles
-
-  // Compute x positions: Sun is partial arc on left (clipped circle)
-  // Planets are placed from left to right with some spacing
-  const SUN_CLIP_X = -sunR + 30; // Sun center mostly off-screen left
-  let x = 30 + 10; // start after sun partial arc
-
-  const positions = [];
-  for (let i = 0; i < BODIES.length; i++) {
-    if (i === 0) {
-      // Sun: center at SUN_CLIP_X, shown as partial arc
-      positions.push(SUN_CLIP_X);
-      x = 8 + radii[1] + PAD; // after sun visible portion
-    } else {
-      x += radii[i] + PAD;
-      positions.push(x);
-      x += radii[i];
-    }
-  }
-
-  const SVG_W = Math.max(positions[positions.length - 1] + radii[radii.length - 1] + PAD, 500);
-
-  let svg = `<svg viewBox="0 0 ${SVG_W} ${SVG_H}" width="${SVG_W}" height="${SVG_H}" xmlns="http://www.w3.org/2000/svg">`;
-  svg += `<defs>`;
-  // Clip path for sun (circular clip so it appears as partial arc)
-  svg += `<clipPath id="sun-clip"><rect x="0" y="0" width="${SVG_W}" height="${SVG_H}"/></clipPath>`;
-  svg += `</defs>`;
-
-  // Earth diameter reference bar (under Earth circle)
-  const earthIdx = 3;
-  const earthR = radii[earthIdx];
-  const earthX = positions[earthIdx];
-  const barY = CENTER_Y + earthR + 14;
-  svg += `<line x1="${earthX - earthR}" y1="${barY}" x2="${earthX + earthR}" y2="${barY}" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>`;
-  svg += `<line x1="${earthX - earthR}" y1="${barY - 4}" x2="${earthX - earthR}" y2="${barY + 4}" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>`;
-  svg += `<line x1="${earthX + earthR}" y1="${barY - 4}" x2="${earthX + earthR}" y2="${barY + 4}" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>`;
-  svg += `<text x="${earthX}" y="${barY + 14}" style="font-size:9px;fill:rgba(255,255,255,0.5)">${t('scale.earthRef') || '1 Earth diameter (12,742 km)'}</text>`;
-
-  for (let i = 0; i < BODIES.length; i++) {
-    const b = BODIES[i];
-    const r = radii[i];
-    const cx = positions[i];
-    const localName = getLocalizedPlanet(b.name.toLowerCase())?.name ?? b.name;
-
-    if (i === 0) {
-      // Sun as partial arc
-      svg += `<circle cx="${cx}" cy="${CENTER_Y}" r="${r}" fill="${b.color}" fill-opacity="0.85" clip-path="url(#sun-clip)"/>`;
-      svg += `<text x="${Math.min(cx + r - 4, 50)}" y="${CENTER_Y - r * 0.4}" style="font-size:11px;fill:rgba(255,220,80,0.9)">${localName}</text>`;
-    } else {
-      svg += `<circle cx="${cx}" cy="${CENTER_Y}" r="${r}" fill="${b.color}" fill-opacity="0.85"/>`;
-      const labelY = r > 10 ? CENTER_Y - r - 6 : CENTER_Y - r - 4;
-      svg += `<text x="${cx}" y="${labelY}">${localName}</text>`;
-      const diamStr = b.diameter >= 1000 ? Math.round(b.diameter/1000)+'k km' : b.diameter+' km';
-      svg += `<text x="${cx}" y="${labelY - 13}" style="font-size:9px;fill:rgba(255,255,255,0.45)">${diamStr}</text>`;
-    }
-  }
-
-  svg += '</svg>';
-  return svg;
-}
-
-document.getElementById('btn-scale')?.addEventListener('click', () => {
-  const modal = document.getElementById('scale-modal');
-  if (!modal) return;
-  // Build SVG on first open (or rebuild after lang change)
-  const container = document.getElementById('scale-svg-container');
-  if (container) container.innerHTML = buildScaleSVG();
-  modal.classList.remove('hidden');
-});
-
-document.getElementById('scale-close')?.addEventListener('click', () => {
-  document.getElementById('scale-modal')?.classList.add('hidden');
-});
-
-document.getElementById('scale-modal')?.addEventListener('click', e => {
-  if (e.target === e.currentTarget) document.getElementById('scale-modal').classList.add('hidden');
 });
 
 // Settings controls

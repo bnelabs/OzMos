@@ -660,6 +660,16 @@ export class SolarSystemScene {
     this._rotationPaused = paused;
   }
 
+  /** Pause/resume the main render loop — used by CrossSectionViewer to free GPU on mobile */
+  setRenderPaused(paused) {
+    if (paused) {
+      this._animating = false;
+    } else if (!this._animating) {
+      this._animating = true;
+      this._animate();
+    }
+  }
+
   _createPlanets() {
     // Detail normal map for proximity surface detail (reused across all rocky planets)
     if (!this._detailNormalMap) {
@@ -701,10 +711,16 @@ export class SolarSystemScene {
       };
       const pbr = PBR[key] || { roughness: 0.8, metalness: 0.0 };
 
+      // Per-planet texture color correction (multiplies with texture map)
+      const TEXTURE_TINT = {
+        venus: new THREE.Color(0.88, 1.0, 0.82), // shift any reddish tone → cream/yellow
+      };
+
       // Prefer photo-realistic textures, fallback to procedural
       if (this.textures[key]) {
         planetMat = new THREE.MeshStandardMaterial({
           map: this.textures[key],
+          color: TEXTURE_TINT[key] ?? new THREE.Color(1, 1, 1),
           roughness: pbr.roughness,
           metalness: pbr.metalness,
         });

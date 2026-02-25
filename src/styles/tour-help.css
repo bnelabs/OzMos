@@ -141,8 +141,8 @@
 }
 
 .help-tab {
-  flex: 1;
-  min-width: 0;
+  flex: none;           /* don't stretch — let content size drive width */
+  min-width: fit-content;
   padding: 10px 12px;
   background: none;
   border: none;
@@ -219,6 +219,10 @@
   color: #e0e0e0;
   font-size: 0.92rem;
   flex: 1;
+  min-width: 0;           /* allow shrinking in flex row */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .help-planet-card-type {
@@ -227,6 +231,8 @@
   padding: 2px 8px;
   background: rgba(255,255,255,0.06);
   border-radius: 10px;
+  flex-shrink: 0;         /* never compress the type badge */
+  white-space: nowrap;
 }
 
 .help-planet-card-chevron {
