@@ -873,10 +873,10 @@ export class SolarSystemScene {
         earth:   { color: 0x4488ff, intensity: 1.0, scale: 1.05, thickness: 1.0 },
         venus:   { color: 0xfff0cc, intensity: 0.4, scale: 1.05, thickness: 2.0 },
         mars:    { color: 0xcc6644, intensity: 0.3, scale: 1.03, thickness: 0.15 },
-        jupiter: { color: 0xccaa77, intensity: 0.5, scale: 1.04, thickness: 2.5 },
-        saturn:  { color: 0xddcc88, intensity: 0.4, scale: 1.04, thickness: 2.0 },
-        uranus:  { color: 0x88ccdd, intensity: 0.4, scale: 1.03, thickness: 2.0 },
-        neptune: { color: 0x4466cc, intensity: 0.5, scale: 1.03, thickness: 2.2 },
+        jupiter: { color: 0xccaa77, intensity: 0.22, scale: 1.03, thickness: 1.0 },
+        saturn:  { color: 0xddcc88, intensity: 0.18, scale: 1.03, thickness: 0.8 },
+        uranus:  { color: 0x88ccdd, intensity: 0.30, scale: 1.03, thickness: 1.5 },
+        neptune: { color: 0x4466cc, intensity: 0.40, scale: 1.03, thickness: 1.8 },
       };
       if (atmConfig[key]) {
         const atm = atmConfig[key];
