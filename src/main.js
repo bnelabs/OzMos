@@ -190,6 +190,7 @@ let sfx = null;
 let zenMode = false;
 let realisticLighting = false;
 let _planetThumbnails = {}; // canvas dataURLs keyed by planet name
+let _helpContentInjected = false;
 
 // Quiz state
 let quizActive = false;
@@ -306,6 +307,7 @@ function refreshStaticText() {
   if (btnReal) btnReal.textContent = realisticLighting ? t('lighting.off') : t('lighting.realistic');
   const btnLs = document.getElementById('btn-lightspeed');
   if (btnLs) btnLs.textContent = t('lightspeed.toggle');
+  _helpContentInjected = false;
 }
 
 function refreshOpenPanels() {
@@ -545,51 +547,49 @@ function startApp() {
 
   // Planet quick-facts data for Help > Planet Guide tab
   const PLANET_QUICK_FACTS = {
-    Sun:     { icon: '\u2600', type: 'Star',         facts: ['Type: G-type main-sequence star', 'Age: 4.6 billion years', 'Distance to Earth: 1 AU (149.6 million km)', 'Surface temp: 5,778 K (photosphere)', 'Diameter: 1.39 million km (109\u00d7 Earth)', 'Mass: 99.86% of solar system mass', 'Core temp: ~15 million K', 'Rotation period: 25 days (equator)'] },
-    Mercury: { icon: '\u25CF', type: 'Terrestrial',  facts: ['Diameter: 4,879 km (0.38\u00d7 Earth)', 'Distance from Sun: 0.39 AU', 'Orbital period: 88 Earth days', 'No moons, no significant atmosphere', 'Surface temps: \u2212180\u00b0C to 430\u00b0C', 'Heavily cratered ancient surface', 'Iron core = 83% of radius', 'Weakest magnetic field among rocky planets'] },
-    Venus:   { icon: '\u25CF', type: 'Terrestrial',  facts: ['Diameter: 12,104 km (0.95\u00d7 Earth)', 'Distance from Sun: 0.72 AU', 'Day = 243 Earth days (longer than its year)', 'Surface pressure: 92\u00d7 Earth\'s', '96.5% CO\u2082 atmosphere, 465\u00b0C surface', 'Rotates retrograde (east to west)', 'Brightest planet as seen from Earth', 'No moons'] },
-    Earth:   { icon: '\u25CF', type: 'Terrestrial',  facts: ['Diameter: 12,742 km', 'Distance from Sun: 1 AU = 149.6 million km', '1 Moon (the largest relative to planet size)', 'Surface: 71% water, unique in solar system', 'Atmosphere: 78% N\u2082, 21% O\u2082', 'Strongest magnetic field among terrestrials', 'Plate tectonics still active', 'Only known planet with life'] },
-    Mars:    { icon: '\u25CF', type: 'Terrestrial',  facts: ['Diameter: 6,779 km (0.53\u00d7 Earth)', 'Distance from Sun: 1.52 AU', '2 moons: Phobos, Deimos (captured asteroids?)', 'Valles Marineris: 4,000 km long, 7 km deep', 'Olympus Mons: tallest volcano in solar system (22 km)', 'Atmosphere: 95% CO\u2082, very thin (1% of Earth\'s)', 'Evidence of ancient liquid water rivers', 'Day length: 24h 37min (similar to Earth)'] },
-    Jupiter: { icon: '\u25CF', type: 'Gas Giant',    facts: ['Diameter: 139,820 km (11\u00d7 Earth)', 'Distance from Sun: 5.2 AU', '95 known moons; 4 large Galilean moons', 'Great Red Spot: storm \u22652\u00d7 Earth\'s diameter', 'Day: 9h 56min (fastest rotation in solar system)', 'Mass = 2.5\u00d7 all other planets combined', 'No solid surface \u2014 gas all the way down', 'Faint ring system discovered 1979'] },
-    Saturn:  { icon: '\u25CF', type: 'Gas Giant',    facts: ['Diameter: 116,460 km (9\u00d7 Earth)', 'Ring system spans 282,000 km, only 20m thick', '146 known moons; Titan has thick N\u2082 atmosphere', 'Least dense planet \u2014 would float on water', 'Wind speeds up to 1,800 km/h', 'Hexagonal storm at north pole', 'Rings composed of ice and rock particles', 'Orbital period: 29.4 years'] },
-    Uranus:  { icon: '\u25CF', type: 'Ice Giant',    facts: ['Diameter: 50,724 km (4\u00d7 Earth)', 'Axial tilt: 97.77\u00b0 \u2014 orbits on its side', '28 moons, all named for Shakespeare characters', 'Faint ring system (11 rings)', 'Orbital period: 84 years', 'Coldest planetary atmosphere: \u2212224\u00b0C', 'Composed mostly of water, methane, ammonia ices', 'Rotates retrograde relative to orbit'] },
-    Neptune: { icon: '\u25CF', type: 'Ice Giant',    facts: ['Diameter: 49,244 km (3.9\u00d7 Earth)', 'Distance from Sun: 30.07 AU', '16 moons; Triton orbits retrograde (captured KBO)', 'Fastest winds in solar system: 2,100 km/h', 'Orbital period: 165 years', 'Great Dark Spot: transient storms observed by Voyager 2', 'Faint ring system with 5 arcs', 'Only planet found by math prediction before observation'] },
+    Sun:     { icon: '\u2600', type: 'Star',        facts: ['help.fact.sun.1','help.fact.sun.2','help.fact.sun.3','help.fact.sun.4','help.fact.sun.5','help.fact.sun.6','help.fact.sun.7','help.fact.sun.8'] },
+    Mercury: { icon: '\u25CF', type: 'Terrestrial', facts: ['help.fact.mercury.1','help.fact.mercury.2','help.fact.mercury.3','help.fact.mercury.4','help.fact.mercury.5','help.fact.mercury.6','help.fact.mercury.7','help.fact.mercury.8'] },
+    Venus:   { icon: '\u25CF', type: 'Terrestrial', facts: ['help.fact.venus.1','help.fact.venus.2','help.fact.venus.3','help.fact.venus.4','help.fact.venus.5','help.fact.venus.6','help.fact.venus.7','help.fact.venus.8'] },
+    Earth:   { icon: '\u25CF', type: 'Terrestrial', facts: ['help.fact.earth.1','help.fact.earth.2','help.fact.earth.3','help.fact.earth.4','help.fact.earth.5','help.fact.earth.6','help.fact.earth.7','help.fact.earth.8'] },
+    Mars:    { icon: '\u25CF', type: 'Terrestrial', facts: ['help.fact.mars.1','help.fact.mars.2','help.fact.mars.3','help.fact.mars.4','help.fact.mars.5','help.fact.mars.6','help.fact.mars.7','help.fact.mars.8'] },
+    Jupiter: { icon: '\u25CF', type: 'Gas Giant',   facts: ['help.fact.jupiter.1','help.fact.jupiter.2','help.fact.jupiter.3','help.fact.jupiter.4','help.fact.jupiter.5','help.fact.jupiter.6','help.fact.jupiter.7','help.fact.jupiter.8'] },
+    Saturn:  { icon: '\u25CF', type: 'Gas Giant',   facts: ['help.fact.saturn.1','help.fact.saturn.2','help.fact.saturn.3','help.fact.saturn.4','help.fact.saturn.5','help.fact.saturn.6','help.fact.saturn.7','help.fact.saturn.8'] },
+    Uranus:  { icon: '\u25CF', type: 'Ice Giant',   facts: ['help.fact.uranus.1','help.fact.uranus.2','help.fact.uranus.3','help.fact.uranus.4','help.fact.uranus.5','help.fact.uranus.6','help.fact.uranus.7','help.fact.uranus.8'] },
+    Neptune: { icon: '\u25CF', type: 'Ice Giant',   facts: ['help.fact.neptune.1','help.fact.neptune.2','help.fact.neptune.3','help.fact.neptune.4','help.fact.neptune.5','help.fact.neptune.6','help.fact.neptune.7','help.fact.neptune.8'] },
   };
 
   const GLOSSARY = [
-    { term: 'AU (Astronomical Unit)', def: 'Average Earth-Sun distance: 149.6 million km. Used to measure distances in the solar system.' },
-    { term: 'Perihelion', def: 'The point in a planet\'s orbit closest to the Sun.' },
-    { term: 'Aphelion', def: 'The point in a planet\'s orbit farthest from the Sun.' },
-    { term: 'Orbital Period', def: 'Time for a body to complete one full orbit around the Sun.' },
-    { term: 'Eccentricity', def: 'How elliptical an orbit is. 0 = perfect circle, 1 = parabola.' },
-    { term: 'Kepler\'s Laws', def: 'Three laws of orbital motion: (1) orbits are ellipses; (2) equal areas swept in equal times; (3) orbital period\u00b2 \u221d orbital radius\u00b3.' },
-    { term: 'CME (Coronal Mass Ejection)', def: 'A massive burst of plasma and magnetic field from the Sun\'s corona. Can cause geomagnetic storms and auroras on Earth.' },
-    { term: 'Solar Wind', def: 'A stream of charged particles (mostly protons and electrons) continuously flowing outward from the Sun at 400\u2013800 km/s.' },
-    { term: 'Magnetosphere', def: 'The region around a planet dominated by its magnetic field. Earth\'s magnetosphere deflects harmful solar wind.' },
-    { term: 'Retrograde Motion', def: 'Apparent backward (westward) movement of a planet in the sky, caused by Earth overtaking it in its orbit.' },
-    { term: 'Hohmann Transfer', def: 'The most fuel-efficient orbit to travel between two circular orbits around the same body \u2014 used for most planetary missions.' },
-    { term: 'Dwarf Planet', def: 'A body orbiting the Sun with enough mass to be round, but has NOT cleared its orbital neighborhood (e.g., Pluto, Ceres, Eris).' },
-    { term: 'Kuiper Belt', def: 'A region of the outer solar system (30\u201350 AU) containing icy bodies including Pluto and many other dwarf planets.' },
-    { term: 'Oort Cloud', def: 'A theoretical vast shell of icy bodies surrounding the solar system at 2,000\u2013100,000 AU. Source of long-period comets.' },
-    { term: 'Albedo', def: 'The fraction of sunlight reflected by a surface. Fresh snow has albedo ~0.9; dark basalt ~0.05.' },
-    { term: 'Synchronous Rotation', def: 'When a moon\'s rotation period equals its orbital period, always showing the same face (e.g., our Moon, most large moons).' },
-    { term: 'Roche Limit', def: 'The distance from a body at which tidal forces would tear apart a satellite. Saturn\'s rings exist inside Saturn\'s Roche limit.' },
-    { term: 'Hill Sphere', def: 'The region around a body where its gravity dominates over the Sun\'s gravity \u2014 defines where moons can stably orbit.' },
-    { term: 'Escape Velocity', def: 'Minimum speed to escape a body\'s gravity. Earth: 11.2 km/s. Moon: 2.4 km/s. Jupiter: 59.5 km/s. Sun: 617.5 km/s.' },
-    { term: 'Barycenter', def: 'The center of mass of a two-body system. The Sun-Jupiter barycenter is just outside the Sun\'s surface.' },
-    { term: 'Tidal Locking', def: 'Gravitational forces slow a moon\'s rotation until it rotates once per orbit, always showing the same face to its planet.' },
-    { term: 'Orbital Resonance', def: 'When two orbiting bodies exert regular gravitational influences due to a ratio of orbital periods (e.g., Jupiter\'s moons Io:Europa:Ganymede = 1:2:4).' },
-    { term: 'Trojan Asteroids', def: 'Asteroids that share an orbit with a planet, clustered at Lagrange points L4 and L5 (60\u00b0 ahead/behind). Jupiter has over 12,000 known Trojans.' },
-    { term: 'Lagrange Points', def: 'Five positions in a two-body system where a small object can maintain stable position. L1\u2013L3 are unstable; L4 and L5 are stable.' },
-    { term: 'Planetary Migration', def: 'The gradual movement of planets to different orbital distances over millions of years, driven by interactions with gas and debris disks.' },
-    { term: 'Solar Constant', def: 'The amount of solar energy per unit area at 1 AU: ~1,361 W/m\u00b2. Varies ~0.1% over the 11-year solar cycle.' },
-    { term: 'Magnetopause', def: 'The boundary between a planet\'s magnetosphere and the solar wind. At Earth it sits ~65,000 km sunward.' },
-    { term: 'Magnetotail', def: 'The elongated region of a magnetosphere stretched away from the Sun by solar wind pressure, extending millions of km.' },
-    { term: 'Stellar Parallax', def: 'The apparent shift of nearby stars against distant background stars as Earth orbits the Sun \u2014 used to measure distances up to ~1,000 parsecs.' },
-    { term: 'Parsec', def: 'Distance at which 1 AU subtends 1 arcsecond of parallax angle: 3.26 light-years or 3.09 \u00d7 10\u00b9\u00b3 km.' },
+    { termKey: 'help.gloss.1.term',  defKey: 'help.gloss.1.def' },
+    { termKey: 'help.gloss.2.term',  defKey: 'help.gloss.2.def' },
+    { termKey: 'help.gloss.3.term',  defKey: 'help.gloss.3.def' },
+    { termKey: 'help.gloss.4.term',  defKey: 'help.gloss.4.def' },
+    { termKey: 'help.gloss.5.term',  defKey: 'help.gloss.5.def' },
+    { termKey: 'help.gloss.6.term',  defKey: 'help.gloss.6.def' },
+    { termKey: 'help.gloss.7.term',  defKey: 'help.gloss.7.def' },
+    { termKey: 'help.gloss.8.term',  defKey: 'help.gloss.8.def' },
+    { termKey: 'help.gloss.9.term',  defKey: 'help.gloss.9.def' },
+    { termKey: 'help.gloss.10.term', defKey: 'help.gloss.10.def' },
+    { termKey: 'help.gloss.11.term', defKey: 'help.gloss.11.def' },
+    { termKey: 'help.gloss.12.term', defKey: 'help.gloss.12.def' },
+    { termKey: 'help.gloss.13.term', defKey: 'help.gloss.13.def' },
+    { termKey: 'help.gloss.14.term', defKey: 'help.gloss.14.def' },
+    { termKey: 'help.gloss.15.term', defKey: 'help.gloss.15.def' },
+    { termKey: 'help.gloss.16.term', defKey: 'help.gloss.16.def' },
+    { termKey: 'help.gloss.17.term', defKey: 'help.gloss.17.def' },
+    { termKey: 'help.gloss.18.term', defKey: 'help.gloss.18.def' },
+    { termKey: 'help.gloss.19.term', defKey: 'help.gloss.19.def' },
+    { termKey: 'help.gloss.20.term', defKey: 'help.gloss.20.def' },
+    { termKey: 'help.gloss.21.term', defKey: 'help.gloss.21.def' },
+    { termKey: 'help.gloss.22.term', defKey: 'help.gloss.22.def' },
+    { termKey: 'help.gloss.23.term', defKey: 'help.gloss.23.def' },
+    { termKey: 'help.gloss.24.term', defKey: 'help.gloss.24.def' },
+    { termKey: 'help.gloss.25.term', defKey: 'help.gloss.25.def' },
+    { termKey: 'help.gloss.26.term', defKey: 'help.gloss.26.def' },
+    { termKey: 'help.gloss.27.term', defKey: 'help.gloss.27.def' },
+    { termKey: 'help.gloss.28.term', defKey: 'help.gloss.28.def' },
+    { termKey: 'help.gloss.29.term', defKey: 'help.gloss.29.def' },
+    { termKey: 'help.gloss.30.term', defKey: 'help.gloss.30.def' },
   ];
-
-  let _helpContentInjected = false;
 
   function _injectHelpTabs() {
     if (_helpContentInjected) return;
@@ -611,7 +611,7 @@ function startApp() {
         'Dwarf Planet': 'planet.type.dwarfPlanet',
       };
       const typeLabel = t(typeKeyMap[data.type] || '') || data.type;
-      const factsLis = data.facts.map(f => `<li>${f}</li>`).join('');
+      const factsLis = data.facts.map(f => `<li>${t(f)}</li>`).join('');
       planetCardsHTML += `
         <div class="help-planet-card">
           <div class="help-planet-card-header">
@@ -630,8 +630,8 @@ function startApp() {
     for (const g of GLOSSARY) {
       glossaryHTML += `
         <div class="glossary-item">
-          <div class="glossary-term">${g.term}</div>
-          <div class="glossary-def">${g.def}</div>
+          <div class="glossary-term">${t(g.termKey)}</div>
+          <div class="glossary-def">${t(g.defKey)}</div>
         </div>`;
     }
     glossaryHTML += '</div>';
