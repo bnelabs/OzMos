@@ -227,7 +227,8 @@ export const gasGiantVertexShader = `
 
   void main() {
     vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
+    // World-space normal so fragment can compute sun lighting (sun is at world origin)
+    vNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPos.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
@@ -263,6 +264,12 @@ void main() {
   animUv.x = fract(animUv.x);
 
   vec4 texColor = texture2D(tDiffuse, animUv);
-  gl_FragColor = texColor;
+
+  // Sun-based diffuse lighting — sun sits at world origin (0,0,0)
+  vec3 sunDir = normalize(-vWorldPosition);
+  float diffuse = max(dot(normalize(vNormal), sunDir), 0.0);
+  // 0.12 ambient floor keeps dark side visible; 0.88 diffuse gives clear terminator
+  float light = 0.12 + diffuse * 0.88;
+  gl_FragColor = vec4(texColor.rgb * light, texColor.a);
 }
 `;

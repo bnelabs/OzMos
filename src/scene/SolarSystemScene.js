@@ -723,7 +723,7 @@ export class SolarSystemScene {
 
       // Per-planet texture color correction (multiplies with texture map)
       const TEXTURE_TINT = {
-        venus: new THREE.Color(0.88, 1.0, 0.82), // shift any reddish tone → cream/yellow
+        venus: new THREE.Color(0.72, 0.88, 0.95), // desaturate orange Solar System Scope texture → pale cream
       };
 
       // Prefer photo-realistic textures, fallback to procedural
@@ -871,7 +871,7 @@ export class SolarSystemScene {
       // Atmosphere for Earth, Venus, Mars, gas giants
       const atmConfig = {
         earth:   { color: 0x4488ff, intensity: 1.0, scale: 1.05, thickness: 1.0 },
-        venus:   { color: 0xddaa44, intensity: 0.6, scale: 1.05, thickness: 3.0 },
+        venus:   { color: 0xfff0cc, intensity: 0.4, scale: 1.05, thickness: 2.0 },
         mars:    { color: 0xcc6644, intensity: 0.3, scale: 1.03, thickness: 0.15 },
         jupiter: { color: 0xccaa77, intensity: 0.5, scale: 1.04, thickness: 2.5 },
         saturn:  { color: 0xddcc88, intensity: 0.4, scale: 1.04, thickness: 2.0 },
